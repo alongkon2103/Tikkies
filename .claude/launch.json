@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "overlay-server-demo",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server-standalone.js", "21215", "--demo"],
+      "port": 21215
+    }
+  ]
+}

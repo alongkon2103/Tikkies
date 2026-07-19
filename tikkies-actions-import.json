@@ -1,0 +1,289 @@
+{
+  "app": "tikkies-tools",
+  "type": "actions",
+  "version": 1,
+  "exportedAt": "2026-07-18T13:15:02.250Z",
+  "count": 15,
+  "actions": [
+    {
+      "id": "a_imp1",
+      "name": "-100 (Kirito) — Gift Overreact",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "Overreact",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "f",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp2",
+      "name": "+50 (Sakamoto) — Gift Finger Heart",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "Finger Heart",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "t",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp3",
+      "name": "-1 WIN — Gift Night Star",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "Night Star",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "k",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp4",
+      "name": "+1 WIN — Gift ความรักของแตงโม",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "ความรักของแตงโม",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "p",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp5",
+      "name": "+2000 (Asta) — Gift Mishka Bear",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "Mishka Bear",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "8",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp6",
+      "name": "+500 (Genos) — Gift Perfume",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "Perfume",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "7",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp7",
+      "name": "+250 (Natsu) — Gift Rosa",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "Rosa",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "6",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp8",
+      "name": "Gift GG (ไม่มีปุ่มในภาพ — แจ้งเตือนไว้ก่อน)",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "GG",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "alert",
+          "text": "{nickname} ส่ง GG!",
+          "durationSec": 5
+        }
+      ]
+    },
+    {
+      "id": "a_imp9",
+      "name": "-2000 (Gilgamesh) — Gift Confetti",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "Confetti",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "4",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp10",
+      "name": "-500 (Rin) — Gift Doughnut",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "Doughnut",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "3",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp11",
+      "name": "-200 (Killua) — Gift Friendship Necklace",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "Friendship Necklace",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "2",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp12",
+      "name": "Wall — Follow",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "follow"
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "l",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp13",
+      "name": "Gacha — Gift Heart Me",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "Heart Me",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "g",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp14",
+      "name": "Tap 100+ Likes (ไม่มีปุ่มในภาพ)",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "like",
+        "likeThreshold": 100
+      },
+      "responses": [
+        {
+          "type": "alert",
+          "text": "ครบ {likeCount} หัวใจ!",
+          "durationSec": 5
+        }
+      ]
+    },
+    {
+      "id": "a_imp15",
+      "name": "-20 (Dog) — Gift Rose",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "Rose",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "1",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    }
+  ]
+}

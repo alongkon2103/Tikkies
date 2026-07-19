@@ -1,0 +1,359 @@
+<!--
+  Tikkies Tools — Chat Widget (แชท overlay สำหรับ OBS Browser Source)
+
+  วิธีใช้:
+    เพิ่ม http://localhost:21213/widgets/chat.html เป็น Browser Source ใน OBS
+    (พื้นหลังโปร่งใส แนะนำขนาดกว้าง 400 สูง 600 ขึ้นไป)
+
+  พารามิเตอร์ (ต่อท้าย URL):
+    ?avatars=0|1      แสดง/ซ่อนรูปโปรไฟล์ (ค่าเริ่มต้นตาม settings.overlay.chatShowAvatars)
+    ?hidecmd=0|1      ซ่อนข้อความที่ขึ้นต้นด้วย '!' (ค่าเริ่มต้นตาม settings.overlay.chatHideCommands)
+    ?social=0|1       แถวประกาศ follow/share/subscribe (ค่าเริ่มต้น 1 = เปิด)
+    ?joins=0|1        แถวประกาศ member เข้าไลฟ์ (ค่าเริ่มต้น 0 = ปิด)
+    ?size=14          ขนาดฟอนต์ (px, ค่าเริ่มต้น 14)
+    ?fade=N           แถวจางหายหลัง N วินาที (0 = ไม่จาง, ค่าเริ่มต้น 0)
+    ?align=bottom|top ตำแหน่งแชทใหม่ (ค่าเริ่มต้น bottom = แชทใหม่ล่างสุดชิดล่างจอ)
+    ?host= / ?port=   กรณีเปิดจากเครื่อง/พอร์ตอื่น (ค่าเริ่มต้น localhost:21213)
+-->
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tikkies — Chat</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: transparent; /* สำหรับใช้เป็น Browser Source ใน OBS */
+    width: 100%; height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, 'Helvetica Neue', 'Thonburi', sans-serif;
+  }
+
+  /* คอลัมน์แชทเต็มจอ — ค่าเริ่มต้นชิดล่าง แถวใหม่อยู่ล่างสุด */
+  #chat {
+    position: fixed;
+    left: 0; right: 0; top: 0; bottom: 0;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 6px;
+    overflow: hidden;
+    font-size: 14px;
+  }
+  #chat.align-top { justify-content: flex-start; }
+
+  .row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55em;
+    max-width: 100%;
+    padding: 0.4em 0.65em;
+    border-radius: 0.7em;
+    background: rgba(18, 18, 22, 0.55);   /* จางๆ ให้อ่านง่ายบนวิดีโอ แต่ยังโปร่ง */
+    color: #ffffff;
+    line-height: 1.45;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85), 0 0 6px rgba(0, 0, 0, 0.5);
+    /* รองรับข้อความไทยยาว/URL/emoji ติดกันยาวๆ — ตัดขึ้นบรรทัดใหม่เสมอ */
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    animation: slide-in-up 0.25s ease-out;
+    transition: opacity 1s ease;
+    flex: 0 0 auto;
+  }
+  #chat.align-top .row { animation-name: slide-in-down; }
+  .row.fade-out { opacity: 0; }
+
+  @keyframes slide-in-up {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes slide-in-down {
+    from { opacity: 0; transform: translateY(-14px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* avatar กลม + ตัวอักษรสำรองเมื่อไม่มีรูป/รูปโหลดไม่ขึ้น */
+  .avatar {
+    position: relative;
+    width: 2em; height: 2em;
+    border-radius: 50%;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-weight: 700;
+    font-size: 0.95em;
+    color: #ffffff;
+    text-shadow: none;
+    user-select: none;
+  }
+  .avatar img {
+    position: absolute;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+  }
+  #chat.no-avatars .avatar { display: none; }
+
+  .body { min-width: 0; }
+  .name {
+    color: #c8c8d6;               /* ชื่อเล่นสีอ่อน */
+    font-weight: 700;
+    margin-right: 0.35em;
+  }
+  .badges { margin-right: 0.3em; }
+  .msg { color: #ffffff; }
+
+  /* แถวประกาศ follow/share/subscribe/member — สีรอง */
+  .row.social {
+    font-size: 0.92em;
+    background: rgba(18, 18, 22, 0.45);
+  }
+  .row.social .name, .row.social .msg { color: #25f4ee; }
+
+  /* แถวของขวัญ — พื้นไล่สี accent (ตั้งจาก JS ตาม settings.overlay.accentColor) */
+  .row.gift { border-radius: 0.7em; }
+  .row.gift .name { color: #ffffff; }
+  .row.gift .msg { font-weight: 600; }
+  .gift-img {
+    width: 2.2em; height: 2.2em;
+    flex: 0 0 auto;
+    object-fit: contain;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+  }
+  .gift-emoji {
+    width: 2.2em; height: 2.2em;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4em;
+  }
+</style>
+</head>
+<body>
+  <div id="chat"></div>
+
+  <script src="common/widget.js"></script>
+  <script>
+  (function () {
+    var params = TikkiesWidget.params;
+    var esc = TikkiesWidget.escapeHtml;
+    var fmt = TikkiesWidget.formatNumber;
+    var chatEl = document.getElementById('chat');
+
+    var MAX_ROWS = 50;
+
+    // ---- อ่านพารามิเตอร์จาก URL ----
+    // คืน true/false เมื่อระบุค่ามาชัดเจน, คืน null เมื่อไม่ได้ระบุ (ให้ snapshot ตัดสิน)
+    function boolParam(name) {
+      var v = params.get(name);
+      if (v == null) return null;
+      return !(v === '0' || v === 'false' || v === 'no');
+    }
+
+    var avatarsParam = boolParam('avatars'); // null = ใช้ค่าจาก snapshot
+    var hidecmdParam = boolParam('hidecmd'); // null = ใช้ค่าจาก snapshot
+    var socialOn = boolParam('social');
+    if (socialOn == null) socialOn = true;   // ค่าเริ่มต้น: เปิด
+    var joinsOn = boolParam('joins');
+    if (joinsOn == null) joinsOn = false;    // member ค่าเริ่มต้น: ปิด
+
+    var fadeSec = Number(params.get('fade'));
+    if (!isFinite(fadeSec) || fadeSec < 0) fadeSec = 0;
+
+    var fontSize = Number(params.get('size'));
+    if (!isFinite(fontSize) || fontSize <= 0) fontSize = 14;
+    fontSize = Math.min(72, Math.max(8, fontSize));
+    chatEl.style.fontSize = fontSize + 'px';
+
+    var alignTop = params.get('align') === 'top';
+    if (alignTop) chatEl.classList.add('align-top');
+
+    // ---- สถานะจากการตั้งค่า (อัปเดตจาก snapshot เมื่อเชื่อมต่อ WS สำเร็จ) ----
+    var showAvatars = avatarsParam != null ? avatarsParam : true;
+    var hideCommands = hidecmdParam != null ? hidecmdParam : false;
+    var accent = '#fe2c55';
+
+    function applyAvatars() {
+      chatEl.classList.toggle('no-avatars', !showAvatars);
+    }
+    applyAvatars();
+
+    // ---- เครื่องมือช่วย ----
+    function hexToRgb(hex) {
+      var m = /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.exec(String(hex || '').trim());
+      if (!m) return { r: 254, g: 44, b: 85 }; // #fe2c55
+      var h = m[1];
+      if (h.length === 3) h = h.charAt(0) + h.charAt(0) + h.charAt(1) + h.charAt(1) + h.charAt(2) + h.charAt(2);
+      return {
+        r: parseInt(h.slice(0, 2), 16),
+        g: parseInt(h.slice(2, 4), 16),
+        b: parseInt(h.slice(4, 6), 16)
+      };
+    }
+    function rgba(hex, a) {
+      var c = hexToRgb(hex);
+      return 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + a + ')';
+    }
+
+    // hash ชื่อ → hue สำหรับวงกลม avatar สำรอง
+    function hashHue(s) {
+      s = String(s || '');
+      var h = 0;
+      for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+      return h % 360;
+    }
+    function firstLetter(s) {
+      s = String(s || '').trim();
+      if (!s) return '?';
+      var cp = s.codePointAt(0);
+      return String.fromCodePoint(cp).toUpperCase();
+    }
+
+    function avatarHtml(d) {
+      var uid = d.uniqueId || d.nickname || '';
+      var hue = hashHue(uid);
+      var letter = esc(firstLetter(d.nickname || d.uniqueId));
+      var img = '';
+      if (d.profilePictureUrl) {
+        // ถ้ารูปโหลดไม่ขึ้นให้ลบทิ้ง เหลือวงกลมสี + อักษรแรกด้านหลัง
+        img = '<img src="' + esc(d.profilePictureUrl) + '" alt="" onerror="this.remove()">';
+      }
+      return '<span class="avatar" style="background:hsl(' + hue + ',60%,45%)">' + letter + img + '</span>';
+    }
+
+    function badgesHtml(d) {
+      var b = '';
+      if (d.isModerator) b += '🛡️';
+      if (d.isSubscriber) b += '⭐';
+      if (Number(d.followRole) >= 1) b += '❤️';
+      return b ? '<span class="badges">' + b + '</span>' : '';
+    }
+
+    // ---- เพิ่ม/ลบแถว ----
+    function addRow(row) {
+      if (alignTop) {
+        chatEl.insertBefore(row, chatEl.firstChild);
+        while (chatEl.children.length > MAX_ROWS) chatEl.removeChild(chatEl.lastChild);
+      } else {
+        chatEl.appendChild(row);
+        while (chatEl.children.length > MAX_ROWS) chatEl.removeChild(chatEl.firstChild);
+      }
+      if (fadeSec > 0) {
+        setTimeout(function () {
+          row.classList.add('fade-out');
+          setTimeout(function () {
+            if (row.parentNode) row.parentNode.removeChild(row);
+          }, 1100); // รอ transition opacity 1s จบก่อนค่อยลบออกจาก DOM
+        }, fadeSec * 1000);
+      }
+    }
+
+    function makeRow(className, html) {
+      var row = document.createElement('div');
+      row.className = 'row ' + className;
+      row.innerHTML = html;
+      return row;
+    }
+
+    // ---- ตัวจัดการ event ----
+    function onChat(d) {
+      if (!d) return;
+      var comment = String(d.comment == null ? '' : d.comment).trim();
+      if (!comment) return; // ข้ามแชทที่ไม่มีข้อความ (สติกเกอร์/emote ของ TikTok ส่งมาเป็น chat ว่าง)
+      if (hideCommands && comment.charAt(0) === '!') return;
+      var html =
+        avatarHtml(d) +
+        '<div class="body">' +
+          '<span class="name">' + esc(d.nickname || d.uniqueId || '') + '</span>' +
+          badgesHtml(d) +
+          '<span class="msg">' + esc(comment) + '</span>' +
+        '</div>';
+      addRow(makeRow('chat', html));
+    }
+
+    function onGift(d) {
+      // นับ/แสดงเฉพาะเมื่อจบ streak เท่านั้น (ตามสัญญากลาง)
+      if (!d || d.repeatEnd !== true) return;
+      var repeat = Number(d.repeatCount) || 1;
+      var total = Number(d.diamondTotal);
+      if (!isFinite(total) || total <= 0) total = (Number(d.diamondCount) || 0) * repeat;
+
+      var img = d.giftPictureUrl
+        ? '<img class="gift-img" src="' + esc(d.giftPictureUrl) + '" alt="" onerror="this.remove()">'
+        : '<span class="gift-emoji">🎁</span>';
+
+      var html =
+        img +
+        '<div class="body">' +
+          '<span class="name">' + esc(d.nickname || d.uniqueId || '') + '</span>' +
+          '<span class="msg">ส่ง ' + esc(d.giftName || 'ของขวัญ') +
+          ' x' + repeat + ' 💎' + fmt(total) + '</span>' +
+        '</div>';
+
+      var row = makeRow('gift', html);
+      // พื้นไล่สี accent จาก settings.overlay.accentColor
+      row.style.background = 'linear-gradient(90deg, ' + rgba(accent, 0.9) + ', ' + rgba(accent, 0.18) + ')';
+      addRow(row);
+    }
+
+    function onSocial(event, d) {
+      if (!socialOn) return;
+      if (event === 'member' && !joinsOn) return;
+      if (!d) return;
+
+      var text;
+      if (event === 'follow') text = 'กดติดตามแล้ว ❤️';
+      else if (event === 'share') text = 'แชร์ไลฟ์นี้ 📤';
+      else if (event === 'subscribe') {
+        var m = Number(d.subMonth);
+        text = 'สมัครสมาชิกแล้ว ⭐' + (isFinite(m) && m > 0 ? ' (เดือนที่ ' + m + ')' : '');
+      } else if (event === 'member') text = 'เข้ามาในไลฟ์ 👋';
+      else return;
+
+      var html =
+        '<div class="body">' +
+          '<span class="name">' + esc(d.nickname || d.uniqueId || '') + '</span>' +
+          '<span class="msg">' + text + '</span>' +
+        '</div>';
+      addRow(makeRow('social', html));
+    }
+
+    // ---- เชื่อมต่อ WS ----
+    TikkiesWidget.connect({
+      onEvent: function (event, data) {
+        if (event === 'snapshot') {
+          // ตั้งค่าเริ่มต้นจาก snapshot เมื่อเชื่อมต่อสำเร็จ (URL param ชนะเสมอ)
+          var ov = data && data.settings && data.settings.overlay;
+          if (ov) {
+            if (avatarsParam == null) {
+              showAvatars = ov.chatShowAvatars !== false;
+              applyAvatars();
+            }
+            if (hidecmdParam == null) hideCommands = ov.chatHideCommands === true;
+            if (ov.accentColor && /^#?[0-9a-fA-F]{3,6}$/.test(String(ov.accentColor).trim())) {
+              accent = ov.accentColor;
+            }
+            if (ov.font) {
+              document.body.style.fontFamily =
+                ov.font + ", -apple-system, 'Helvetica Neue', 'Thonburi', sans-serif";
+            }
+          }
+          return;
+        }
+        if (event === 'chat') return onChat(data);
+        if (event === 'gift') return onGift(data);
+        if (event === 'follow' || event === 'share' || event === 'subscribe' || event === 'member') {
+          return onSocial(event, data);
+        }
+      }
+    });
+  })();
+  </script>
+</body>
+</html>

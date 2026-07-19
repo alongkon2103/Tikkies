@@ -1,0 +1,238 @@
+<!--
+  Tikkies Tools — TTS Widget (อ่านข้อความด้วยเสียง + แสดง caption)
+
+  วิธีใช้:
+    - เปิด http://localhost:21213/widgets/tts.html ในเบราว์เซอร์จริง (Chrome/Edge/Safari)
+      เพื่อให้อ่านเสียง — เบราว์เซอร์ส่วนใหญ่ต้อง "คลิกหน้านี้ 1 ครั้ง" ก่อนถึงจะยอมเล่นเสียง
+    - พารามิเตอร์:
+        ?caption=0        ปิดกล่อง caption (เหลือเสียงอย่างเดียว)
+        ?host= / ?port=   กรณีเปิดจากเครื่อง/พอร์ตอื่น (ค่าเริ่มต้น localhost:21213)
+
+  ข้อจำกัดของ OBS:
+    Browser Source ของ OBS "ไม่รองรับ speechSynthesis" — ถ้าเพิ่มหน้านี้เป็น
+    Browser Source จะไม่มีเสียงออก หน้านี้ตรวจเองอัตโนมัติแล้วสลับเป็นโหมด
+    "แสดง caption อย่างเดียว" แทน
+
+  คำแนะนำ:
+    ให้ใช้โหมด "อ่านในแอป" (ตั้งค่า tts.playInApp = true ซึ่งเป็นค่าเริ่มต้น) เป็นหลัก —
+    หน้า Dashboard ของ Tikkies Tools จะเป็นคนอ่านเสียงให้ ส่วนหน้านี้เอาไว้วางใน OBS
+    เพื่อโชว์ caption ของข้อความที่กำลังอ่าน
+    หมายเหตุ: ถ้าเปิด playInApp ไว้และเปิดหน้านี้ในเบราว์เซอร์จริงพร้อมกัน เสียงจะซ้อนกัน
+-->
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tikkies — TTS</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: transparent; /* สำหรับใช้เป็น Browser Source ใน OBS */
+    width: 100%; height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, 'Helvetica Neue', 'Thonburi', sans-serif;
+  }
+
+  /* กล่อง caption ล่างกลางจอ */
+  #caption {
+    position: fixed;
+    left: 50%;
+    bottom: 6%;
+    transform: translateX(-50%) translateY(12px);
+    max-width: 80%;
+    padding: 12px 20px;
+    background: rgba(28, 28, 34, 0.92);           /* การ์ด #1c1c22 */
+    color: #ececf1;
+    border-left: 4px solid #fe2c55;               /* สีหลัก */
+    border-radius: 10px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+    font-size: 22px;
+    line-height: 1.45;
+    text-align: center;
+    word-break: break-word;
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+  }
+  #caption.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ป้ายแจ้งให้คลิกปลดล็อกเสียง (โชว์เฉพาะเมื่อเบราว์เซอร์บล็อกการเล่นเสียง) */
+  #unlock-hint {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 14px;
+    background: rgba(28, 28, 34, 0.92);
+    color: #25f4ee;                               /* สีรอง */
+    border: 1px solid #25f4ee;
+    border-radius: 8px;
+    font-size: 14px;
+    display: none;
+    cursor: pointer;
+  }
+  #unlock-hint.show { display: block; }
+</style>
+</head>
+<body>
+  <div id="unlock-hint">เบราว์เซอร์บล็อกเสียงอยู่ — คลิกที่หน้านี้ 1 ครั้งเพื่ออนุญาตให้อ่านเสียง</div>
+  <div id="caption"></div>
+
+  <script src="common/widget.js"></script>
+  <script>
+  (function () {
+    var params = TikkiesWidget.params;
+    var showCaption = params.get('caption') !== '0';
+    var captionEl = document.getElementById('caption');
+    var hintEl = document.getElementById('unlock-hint');
+
+    // OBS browser source ไม่รองรับ speechSynthesis → โหมด caption อย่างเดียว
+    var speechOk = ('speechSynthesis' in window &&
+                    typeof window.speechSynthesis.getVoices === 'function');
+
+    // ค่าเริ่มต้น (อัปเดตจาก snapshot.settings.tts เมื่อเชื่อมต่อ WS สำเร็จ)
+    var defaults = { voice: '', rate: 1, pitch: 1, volume: 1 };
+
+    var voices = [];
+    function loadVoices() {
+      try { voices = window.speechSynthesis.getVoices() || []; } catch (e) { voices = []; }
+    }
+    if (speechOk) {
+      loadVoices();
+      if ('onvoiceschanged' in window.speechSynthesis) {
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+      }
+    }
+
+    // เลือกเสียง: ชื่อตรงกับ data.voice ก่อน → ไม่มีก็เอาเสียงภาษาไทยตัวแรก → ไม่มีก็ default
+    function pickVoice(name) {
+      if (!voices.length) loadVoices();
+      var i;
+      if (name) {
+        for (i = 0; i < voices.length; i++) {
+          if (voices[i].name === name) return voices[i];
+        }
+      }
+      for (i = 0; i < voices.length; i++) {
+        if (String(voices[i].lang || '').toLowerCase().indexOf('th') === 0) return voices[i];
+      }
+      return null; // ใช้เสียง default ของเบราว์เซอร์
+    }
+
+    function clamp(n, min, max, fallback) {
+      n = Number(n);
+      if (!isFinite(n)) return fallback;
+      return Math.min(max, Math.max(min, n));
+    }
+
+    function captionShow(text) {
+      // escape กัน XSS จากชื่อ/ข้อความแชทเสมอ
+      captionEl.innerHTML = TikkiesWidget.escapeHtml(text);
+      captionEl.classList.add('show');
+    }
+    function captionHide() {
+      captionEl.classList.remove('show');
+    }
+
+    // ---- คิวข้อความ: อ่าน/แสดงทีละอัน ----
+    var queue = [];
+    var busy = false;
+
+    function processNext() {
+      if (busy) return;
+      var item = queue.shift();
+      if (!item) return;
+      busy = true;
+      if (showCaption) captionShow(item.text);
+
+      var finished = false;
+      var watchdog = null;
+      function done() {
+        if (finished) return;
+        finished = true;
+        if (watchdog) clearTimeout(watchdog);
+        if (showCaption) captionHide();
+        busy = false;
+        setTimeout(processNext, 350); // เว้นจังหวะเล็กน้อยระหว่างข้อความ
+      }
+
+      if (!speechOk) {
+        // โหมด caption อย่างเดียว: กะเวลาแสดงจากความยาวข้อความ
+        setTimeout(done, Math.min(8000, 1500 + item.text.length * 70));
+        return;
+      }
+
+      try {
+        var u = new SpeechSynthesisUtterance(item.text);
+        var v = pickVoice(item.voice || defaults.voice);
+        if (v) u.voice = v;
+        u.rate = clamp(item.rate != null ? item.rate : defaults.rate, 0.1, 10, 1);
+        u.pitch = clamp(item.pitch != null ? item.pitch : defaults.pitch, 0, 2, 1);
+        u.volume = clamp(item.volume != null ? item.volume : defaults.volume, 0, 1, 1);
+        u.onend = done;
+        u.onerror = function (e) {
+          // Chrome บล็อก speak() ก่อนผู้ใช้คลิกหน้า → โชว์ป้ายบอกวิธีปลดล็อก
+          if (e && e.error === 'not-allowed') hintEl.classList.add('show');
+          done();
+        };
+        window.speechSynthesis.speak(u);
+        // กันคิวค้างกรณี onend ไม่ยิง (บั๊กที่พบได้ใน speechSynthesis)
+        watchdog = setTimeout(function () {
+          if (finished) return;
+          try { window.speechSynthesis.cancel(); } catch (e) {}
+          done();
+        }, Math.min(30000, 4000 + item.text.length * 250));
+      } catch (e) {
+        done();
+      }
+    }
+
+    function enqueue(data) {
+      if (!data || !data.text) return;
+      queue.push({
+        text: String(data.text),
+        voice: data.voice || '',
+        rate: data.rate,
+        pitch: data.pitch,
+        volume: data.volume
+      });
+      // กันคิวยาวเกิน (เช่นแชทถล่ม) — ทิ้งของเก่าสุด เก็บไว้ 20 อันล่าสุด
+      while (queue.length > 20) queue.shift();
+      processNext();
+    }
+
+    // คลิกที่ไหนก็ได้เพื่อปลดล็อกเสียง (autoplay policy ของเบราว์เซอร์)
+    document.addEventListener('click', function () {
+      hintEl.classList.remove('show');
+      if (speechOk) {
+        try { window.speechSynthesis.resume(); } catch (e) {}
+      }
+    });
+
+    TikkiesWidget.connect({
+      onEvent: function (event, data) {
+        if (event === 'snapshot') {
+          // ตั้งค่าเริ่มต้นจาก snapshot เมื่อเชื่อมต่อสำเร็จ
+          var s = data && data.settings && data.settings.tts;
+          if (s) {
+            defaults.voice = s.voice || '';
+            defaults.rate = isFinite(Number(s.rate)) ? Number(s.rate) : 1;
+            defaults.pitch = isFinite(Number(s.pitch)) ? Number(s.pitch) : 1;
+            defaults.volume = isFinite(Number(s.volume)) ? Number(s.volume) : 1;
+          }
+          return;
+        }
+        if (event === 'tts') enqueue(data);
+      },
+      onClose: function () {
+        captionHide();
+      }
+    });
+  })();
+  </script>
+</body>
+</html>

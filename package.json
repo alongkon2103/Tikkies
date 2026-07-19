@@ -1,0 +1,61 @@
+{
+  "name": "tikkies-tools",
+  "productName": "Tikkies Tools",
+  "version": "0.1.0",
+  "description": "เครื่องมือสำหรับสตรีมเมอร์ TikTok LIVE — Alerts, TTS, Actions, Overlays (แนว TikFinity)",
+  "main": "main.js",
+  "author": "alongkon2103",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alongkon2103/Tikkies.git"
+  },
+  "scripts": {
+    "start": "electron .",
+    "server": "node server-standalone.js",
+    "smoke": "node smoke-test.js",
+    "dist": "electron-builder --win --publish never",
+    "release": "electron-builder --win --publish always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9",
+    "express": "^4.21.2",
+    "obs-websocket-js": "^5.0.6",
+    "tiktok-live-connector": "^2.4.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8",
+    "lucide-static": "^1.24.0"
+  },
+  "build": {
+    "appId": "com.tikkies.tools",
+    "productName": "Tikkies Tools",
+    "asar": false,
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "data/tiktok_gifts.json",
+      "!**/*.map",
+      "!src/**/*.test.js"
+    ],
+    "win": {
+      "target": ["nsis"],
+      "artifactName": "Tikkies-Tools-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "alongkon2103",
+      "repo": "Tikkies"
+    }
+  }
+}

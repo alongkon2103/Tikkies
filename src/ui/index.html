@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; media-src 'self' https: file: data:; connect-src 'self';">
+<title>Tikkies Tools</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="app">
+  <!-- แถบด้านข้าง -->
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="brand-logo" data-icon="gift"></div>
+      <div class="brand-text">
+        <div class="brand-name">Tikkies Tools</div>
+        <div class="brand-sub">TikTok LIVE Toolkit</div>
+      </div>
+    </div>
+
+    <div class="conn-card" id="connCard">
+      <div class="conn-status">
+        <span class="dot" id="connDot"></span>
+        <span id="connText">ยังไม่เชื่อมต่อ</span>
+      </div>
+      <div class="conn-meta" id="connMeta"></div>
+    </div>
+
+    <nav id="nav">
+      <button class="nav-item active" data-tab="overview" data-icon="overview">ภาพรวม</button>
+      <button class="nav-item" data-tab="events" data-icon="events">เหตุการณ์สด</button>
+      <button class="nav-item" data-tab="actions" data-icon="actions">Actions</button>
+      <button class="nav-item" data-tab="widgets" data-icon="widgets">Widgets (OBS)</button>
+      <button class="nav-item" data-tab="tts" data-icon="tts">เสียงอ่าน (TTS)</button>
+      <button class="nav-item" data-tab="goals" data-icon="goals">เป้าหมาย & Timer</button>
+      <button class="nav-item" data-tab="settings" data-icon="settings">ตั้งค่า</button>
+    </nav>
+
+    <div class="sidebar-foot">
+      <span class="ver" id="versionLabel"></span>
+      <button class="theme-toggle" id="themeToggle" title="สลับธีมสว่าง/มืด" data-icon="moon"></button>
+    </div>
+  </aside>
+
+  <!-- เนื้อหาหลัก -->
+  <main id="main">
+    <!-- ภาพรวม -->
+    <section class="tab" data-tab="overview">
+      <h1>ภาพรวม</h1>
+
+      <div class="card connect-box">
+        <div class="connect-row">
+          <div class="input-group">
+            <span class="at">@</span>
+            <input id="usernameInput" type="text" placeholder="ชื่อผู้ใช้ TikTok ที่กำลังไลฟ์" autocomplete="off" spellcheck="false">
+          </div>
+          <button class="btn btn-primary" id="connectBtn">เชื่อมต่อ</button>
+        </div>
+        <label class="check-inline"><input type="checkbox" id="autoConnectChk"> เชื่อมต่ออัตโนมัติ</label>
+        <div class="connect-error" id="connectError"></div>
+      </div>
+
+      <!-- แถบสถิติสดแบบ console เดียว — ผู้ชมเด่นสุด แบ่งช่องด้วยเส้น ไม่ใช่การ์ดแยก -->
+      <div class="stat-grid" id="statGrid">
+        <div class="stat-card lead">
+          <div class="stat-top" data-icon="viewers"><span>ผู้ชมตอนนี้</span></div>
+          <div class="stat-val" data-stat="viewerCount">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top" data-icon="heart"><span>หัวใจ (รวม)</span></div>
+          <div class="stat-val" data-stat="totalLikes">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top" data-icon="diamond"><span>เพชรรวม</span></div>
+          <div class="stat-val" data-stat="totalDiamonds">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top" data-icon="follow"><span>ผู้ติดตามใหม่</span></div>
+          <div class="stat-val" data-stat="follows">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top" data-icon="chat"><span>ข้อความแชท</span></div>
+          <div class="stat-val" data-stat="totalChats">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top" data-icon="share"><span>แชร์</span></div>
+          <div class="stat-val" data-stat="shares">0</div>
+        </div>
+      </div>
+
+      <div class="overview-main">
+        <div class="card ov-feed-card">
+          <div class="ov-feed-head">
+            <div class="card-title" data-icon="events">กิจกรรมสด</div>
+            <span class="muted small" id="ovFeedHint">รอเหตุการณ์จากไลฟ์...</span>
+          </div>
+          <div id="overviewFeed" class="ov-feed"></div>
+        </div>
+        <div class="ov-side">
+          <div class="card">
+            <div class="card-title" data-icon="trophy">ท็อปผู้สนับสนุน</div>
+            <div id="miniLeaderboard" class="mini-lb"><div class="muted small">ยังไม่มีข้อมูล</div></div>
+          </div>
+          <div class="card sandbox">
+            <div class="card-title" data-icon="flask">ทดสอบ <span class="sandbox-tag">จำลอง</span></div>
+            <div class="test-btns">
+              <button class="btn btn-ghost btn-sm" data-sim="chat" data-icon="chat">แชท</button>
+              <button class="btn btn-ghost btn-sm" data-sim="gift" data-icon="gift">ของขวัญ</button>
+              <button class="btn btn-ghost btn-sm" data-sim="like" data-icon="heart">ไลค์</button>
+              <button class="btn btn-ghost btn-sm" data-sim="follow" data-icon="follow">ติดตาม</button>
+              <button class="btn btn-ghost btn-sm" data-sim="share" data-icon="share">แชร์</button>
+              <button class="btn btn-ghost btn-sm" data-sim="member" data-icon="member">เข้าห้อง</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- เหตุการณ์สด -->
+    <section class="tab" data-tab="events" hidden>
+      <h1>เหตุการณ์สด</h1>
+      <div class="card">
+        <div class="events-toolbar">
+          <div class="filters" id="eventFilters">
+            <label><input type="checkbox" value="chat" checked> แชท</label>
+            <label><input type="checkbox" value="gift" checked> ของขวัญ</label>
+            <label><input type="checkbox" value="like" checked> ไลค์</label>
+            <label><input type="checkbox" value="follow" checked> ติดตาม</label>
+            <label><input type="checkbox" value="share" checked> แชร์</label>
+            <label><input type="checkbox" value="subscribe" checked> สมาชิก</label>
+            <label><input type="checkbox" value="member" checked> เข้าห้อง</label>
+          </div>
+          <button class="btn btn-ghost btn-sm" id="clearEvents" data-icon="trash">ล้าง</button>
+        </div>
+        <div id="eventFeed" class="event-feed"><div class="muted">รอเหตุการณ์...</div></div>
+      </div>
+    </section>
+
+    <!-- Actions -->
+    <section class="tab" data-tab="actions" hidden>
+      <div class="row-between">
+        <h1>Actions</h1>
+        <div class="action-toolbar">
+          <button class="btn btn-sm" id="importActionsBtn" data-icon="download">นำเข้า</button>
+          <button class="btn btn-sm" id="exportActionsBtn" data-icon="upload">ส่งออก</button>
+          <button class="btn btn-primary" id="newActionBtn" data-icon="plus">สร้าง Action</button>
+        </div>
+      </div>
+      <p class="muted">ตั้งกฎ: เมื่อเกิดเหตุการณ์ (ได้ของขวัญ / แชทคำสั่ง / ครบไลค์ ฯลฯ) → ให้ทำอะไร (แจ้งเตือน, อ่านเสียง, เล่นเสียง, กดปุ่มในเกม, สั่ง OBS, ยิง webhook)</p>
+      <div class="templates-wrap">
+        <div class="templates-label">เทมเพลตยอดฮิต — กดเพื่อเพิ่มแล้วปรับต่อได้</div>
+        <div class="templates-bar" id="actionTemplates"></div>
+      </div>
+      <div id="actionsList" class="actions-list"></div>
+    </section>
+
+    <!-- Widgets -->
+    <section class="tab" data-tab="widgets" hidden>
+      <h1>Widgets สำหรับ OBS</h1>
+      <div class="card info-banner">
+        <strong>วิธีเพิ่มใน OBS:</strong> Sources → + → <b>Browser</b> → วาง URL ด้านล่าง → กำหนดขนาดตามที่แนะนำ →
+        พื้นหลังโปร่งใสอัตโนมัติ (แนะนำติ๊ก "Shutdown source when not visible" และ "Refresh browser when scene becomes active")
+      </div>
+      <div id="widgetsList" class="widgets-list"></div>
+    </section>
+
+    <!-- TTS -->
+    <section class="tab" data-tab="tts" hidden>
+      <h1>เสียงอ่าน (TTS)</h1>
+      <div class="card">
+        <div class="switch-grid">
+          <label class="switch-row"><span>เปิดใช้งานเสียงอ่าน</span><input type="checkbox" data-tts="enabled"></label>
+          <label class="switch-row"><span>อ่านข้อความแชท</span><input type="checkbox" data-tts="readChat"></label>
+          <label class="switch-row"><span>อ่านของขวัญ</span><input type="checkbox" data-tts="readGifts"></label>
+          <label class="switch-row"><span>อ่านผู้ติดตามใหม่</span><input type="checkbox" data-tts="readFollows"></label>
+          <label class="switch-row"><span>อ่านเสียงในแอปนี้ (แนะนำ)</span><input type="checkbox" data-tts="playInApp"></label>
+        </div>
+        <div class="field">
+          <label>เสียงพูด <span class="muted small" id="voiceCount"></span></label>
+          <input type="text" list="voiceList" data-tts="voice" placeholder="อัตโนมัติ (เลือกเสียงไทยที่ดีที่สุด)">
+          <datalist id="voiceList"></datalist>
+          <div class="hint">
+            อยากได้เสียงไทยเพิ่ม/คมชัดขึ้น (โหลดเสร็จกดปุ่มทดสอบด้านล่างได้เลย):<br>
+            <b>macOS:</b> System Settings → Accessibility → Spoken Content → System Voices → จัดการเสียง → โหลดเสียงไทย (Kanya พรีเมียม / Siri)<br>
+            <b>Windows:</b> Settings → Time &amp; Language → Speech → Manage voices → Add voices → เลือกภาษาไทย (Microsoft Pattara)
+          </div>
+        </div>
+        <div class="slider-row">
+          <label>ความเร็ว <b data-slider-val="rate">1.0</b></label>
+          <input type="range" min="0.5" max="2" step="0.1" data-tts="rate">
+        </div>
+        <div class="slider-row">
+          <label>ระดับเสียงสูง-ต่ำ <b data-slider-val="pitch">1.0</b></label>
+          <input type="range" min="0" max="2" step="0.1" data-tts="pitch">
+        </div>
+        <div class="slider-row">
+          <label>ความดัง <b data-slider-val="volume">1.0</b></label>
+          <input type="range" min="0" max="1" step="0.05" data-tts="volume">
+        </div>
+        <div class="field">
+          <label>อ่านเฉพาะบทบาท</label>
+          <select data-tts="minRole">
+            <option value="all">ทุกคน</option>
+            <option value="follower">ผู้ติดตามขึ้นไป</option>
+            <option value="subscriber">สมาชิก (Subscriber) ขึ้นไป</option>
+            <option value="moderator">ผู้ดูแล (Mod) เท่านั้น</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>คำต้องห้าม (บรรทัดละคำ — ข้อความที่มีคำเหล่านี้จะไม่ถูกอ่าน)</label>
+          <textarea data-tts="bannedWords" rows="3" placeholder="เช่น&#10;คำหยาบ1&#10;คำหยาบ2"></textarea>
+        </div>
+        <div class="field">
+          <label>รูปแบบการอ่านแชท <span class="muted small">— ใช้ {nickname} {comment} เช่นใส่แค่ {comment} = อ่านเฉพาะข้อความไม่อ่านชื่อ</span></label>
+          <input type="text" data-tts="chatTemplate" placeholder="{nickname} บอกว่า {comment}">
+        </div>
+        <div class="field">
+          <label>รูปแบบการอ่านของขวัญ <span class="muted small">— ใช้ {nickname} {giftName} {repeatCount}</span></label>
+          <input type="text" data-tts="giftTemplate">
+        </div>
+        <div class="field">
+          <label>รูปแบบการอ่านผู้ติดตาม <span class="muted small">— ใช้ {nickname}</span></label>
+          <input type="text" data-tts="followTemplate">
+        </div>
+        <div class="row-between">
+          <input type="text" id="ttsTestText" placeholder="พิมพ์ข้อความทดสอบ..." value="สวัสดีครับ ยินดีต้อนรับสู่ไลฟ์">
+          <button class="btn btn-primary" id="ttsTestBtn" data-icon="tts">ทดสอบเสียง</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- เป้าหมาย & Timer -->
+    <section class="tab" data-tab="goals" hidden>
+      <h1>เป้าหมาย & Timer</h1>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title" data-icon="goals">เป้าหมาย (Goals)</div>
+          <div id="goalsForm"></div>
+          <div class="goal-preview" id="goalPreview"></div>
+        </div>
+        <div class="card">
+          <div class="card-title" data-icon="timer">Subathon Timer</div>
+          <label class="switch-row"><span>เปิดใช้งาน Timer</span><input type="checkbox" data-timer="enabled"></label>
+          <div class="field"><label>ชื่อ Timer</label><input type="text" data-timer="label"></div>
+          <div class="grid2">
+            <div class="field"><label>เวลาเริ่มต้น (นาที)</label><input type="number" min="0" data-timer="initialMinutes"></div>
+            <div class="field"><label>+วินาที ต่อ 1 เพชร</label><input type="number" min="0" step="0.1" data-timer="secondsPerDiamond"></div>
+            <div class="field"><label>+วินาที ต่อ 1 ติดตาม</label><input type="number" min="0" data-timer="secondsPerFollow"></div>
+            <div class="field"><label>+วินาที ต่อ 1 แชร์</label><input type="number" min="0" data-timer="secondsPerShare"></div>
+          </div>
+          <div class="timer-display" id="timerDisplay">00:00</div>
+          <div class="timer-controls">
+            <button class="btn btn-ghost" data-timer-cmd="start" data-icon="play">เริ่ม</button>
+            <button class="btn btn-ghost" data-timer-cmd="pause" data-icon="pause">พัก</button>
+            <button class="btn btn-ghost" data-timer-cmd="reset" data-icon="reset">รีเซ็ต</button>
+            <button class="btn btn-ghost" data-timer-cmd="add" data-add="60" data-icon="plus">1 นาที</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ตั้งค่า -->
+    <section class="tab" data-tab="settings" hidden>
+      <h1>ตั้งค่า</h1>
+      <div class="card">
+        <div class="card-title" data-icon="server">เซิร์ฟเวอร์ Overlay</div>
+        <div class="field">
+          <label>พอร์ต <span class="muted small">(เปลี่ยนแล้วต้องรีสตาร์ทโปรแกรม)</span></label>
+          <input type="number" data-setting="serverPort">
+        </div>
+        <div class="field">
+          <label>Sign API Key <span class="muted small">(ไม่บังคับ — เพิ่มโควต้าการเชื่อมต่อ ขอได้ที่ eulerstream.com)</span></label>
+          <input type="text" data-setting="signApiKey" placeholder="ปล่อยว่างได้">
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title" data-icon="video">OBS Studio</div>
+        <p class="muted small">เปิดใน OBS: Tools → WebSocket Server Settings → Enable → คัดลอกรหัสผ่านมาใส่ (ต้องเป็น OBS 28 ขึ้นไป)</p>
+        <div class="grid2">
+          <div class="field"><label>ที่อยู่ WebSocket</label><input type="text" data-setting="obs.url" placeholder="ws://127.0.0.1:4455"></div>
+          <div class="field"><label>รหัสผ่าน</label><input type="password" data-setting="obs.password"></div>
+        </div>
+        <label class="check-inline"><input type="checkbox" data-setting="obs.enabled"> เชื่อมต่อ OBS อัตโนมัติ</label>
+        <div class="row-between">
+          <div class="obs-status" id="obsStatus">ยังไม่เชื่อมต่อ</div>
+          <div>
+            <button class="btn btn-ghost btn-sm" id="obsConnectBtn">เชื่อมต่อ</button>
+            <button class="btn btn-ghost btn-sm" id="obsDisconnectBtn">ตัดการเชื่อมต่อ</button>
+          </div>
+        </div>
+        <div class="obs-scenes" id="obsScenes"></div>
+      </div>
+      <div class="card">
+        <div class="card-title" data-icon="info">เกี่ยวกับ</div>
+        <p class="muted small">Tikkies Tools <span id="aboutVersion"></span> — เครื่องมือสำหรับสตรีมเมอร์ TikTok LIVE</p>
+        <p class="muted small">ใช้ไลบรารี tiktok-live-connector (ไม่เป็นทางการ ไม่เกี่ยวข้องกับ TikTok)</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- แถบสถานะล่าง -->
+<div id="statusbar">
+  <span id="statusLog" class="status-log">พร้อมใช้งาน</span>
+  <span class="status-right">
+    <span id="serverStatus">เซิร์ฟเวอร์: —</span>
+    <span id="obsBar">OBS: —</span>
+  </span>
+</div>
+
+<!-- Toast + Modal -->
+<div id="toastHost"></div>
+<div id="modalHost" hidden></div>
+
+<script src="js/icons.js"></script>
+<script src="js/util.js"></script>
+<script src="js/actions-editor.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

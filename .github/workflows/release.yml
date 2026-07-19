@@ -1,0 +1,35 @@
+name: Build & Release (Windows)
+
+# ปล่อยเวอร์ชันใหม่ + auto-update ให้ผู้ใช้: bump version แล้ว push tag เช่น v0.1.1
+#   npm version patch      # bump package.json + สร้าง commit + tag ให้อัตโนมัติ
+#   git push --follow-tags # ดัน commit + tag ขึ้น GitHub → workflow นี้ build .exe แล้วขึ้น Releases
+# (หรือกดรันเองจากแท็บ Actions ผ่าน workflow_dispatch)
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write   # ต้องมีสิทธิ์เขียนเพื่อสร้าง Release
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build & publish Windows installer
+        run: npx electron-builder --win --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

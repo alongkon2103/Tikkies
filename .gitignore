@@ -1,0 +1,17 @@
+# dependencies & build output
+node_modules/
+dist/
+out/
+build/
+
+# runtime / local data (settings persist ที่ userData ตอน build แล้ว)
+data/settings.json
+data/debug-events.json
+
+# OS / editor
+.DS_Store
+*.log
+Thumbs.db
+
+# ไฟล์ตัวอย่าง action ที่ export ระหว่างทดสอบ (เก็บได้ถ้าอยากให้เป็นตัวอย่าง — ตอนนี้ไม่ commit)
+# tikkies-actions-import.json

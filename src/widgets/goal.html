@@ -1,0 +1,224 @@
+<!--
+  Tikkies Tools — Goal Widget (หลอดเป้าหมาย สำหรับ OBS Browser Source)
+
+  วิธีใช้:
+    เพิ่ม http://localhost:21213/widgets/goal.html เป็น Browser Source ใน OBS
+    (พื้นหลังโปร่งใส แนะนำขนาดกว้าง 420 สูง 90 ต่อหลอด 1 หลอด)
+
+  พารามิเตอร์ (ต่อท้าย URL):
+    ?goal=likes|diamonds|followers  แสดงหลอดเดียวตามที่ระบุ
+                                    (ไม่ระบุ = แสดงทุกเป้าหมายที่เปิดใช้ ซ้อนแนวตั้ง)
+    ?host= / ?port=                 กรณีเปิดจากเครื่อง/พอร์ตอื่น (ค่าเริ่มต้น localhost:21213)
+
+  ข้อมูล: ฟัง event 'goals' และตั้งค่าเริ่มต้นจาก snapshot.goals
+-->
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tikkies — Goal</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: transparent; /* สำหรับใช้เป็น Browser Source ใน OBS */
+    width: 100%; height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, 'Helvetica Neue', 'Thonburi', sans-serif;
+  }
+
+  #goals {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 12px;
+  }
+
+  .goal {
+    background: rgba(18, 18, 22, 0.55);
+    border-radius: 14px;
+    padding: 10px 14px 12px;
+    color: #ececf1;
+  }
+
+  .head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 7px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  }
+  .label {
+    font-weight: 700;
+    font-size: 15px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .right { flex: 0 0 auto; }
+  .value {
+    font-weight: 600;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    color: #ececf1;
+  }
+
+  /* ป้าย "สำเร็จ" — โผล่เมื่อครบเป้า */
+  .done-badge {
+    display: none;
+    color: #ffd766;
+    font-weight: 800;
+    font-size: 14px;
+    margin-right: 8px;
+  }
+  .goal.done .done-badge {
+    display: inline-block;
+    animation: badge-pop 0.5s ease;
+  }
+  @keyframes badge-pop {
+    0%   { opacity: 0; transform: scale(0.4); }
+    60%  { transform: scale(1.25); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  /* หลอดเป้าหมาย: โค้งมน สูง ~28px, fill ไล่สี + glow */
+  .bar {
+    position: relative;
+    height: 28px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 8px rgba(254, 44, 85, 0.35), 0 0 16px rgba(37, 244, 238, 0.18);
+    overflow: hidden;
+  }
+  .fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 0%;
+    border-radius: 14px;
+    background: linear-gradient(90deg, #fe2c55, #25f4ee);
+    transition: width 0.6s ease;
+  }
+
+  /* ครบเป้า: หลอดกะพริบ glow */
+  .goal.done .bar {
+    animation: glow-blink 0.9s ease-in-out infinite alternate;
+  }
+  @keyframes glow-blink {
+    from { box-shadow: 0 0 8px rgba(254, 44, 85, 0.5),  0 0 14px rgba(37, 244, 238, 0.3); }
+    to   { box-shadow: 0 0 20px rgba(254, 44, 85, 0.95), 0 0 36px rgba(37, 244, 238, 0.75); }
+  }
+</style>
+</head>
+<body>
+  <div id="goals"></div>
+
+  <script src="common/widget.js"></script>
+  <script>
+  (function () {
+    var params = TikkiesWidget.params;
+    var esc = TikkiesWidget.escapeHtml;
+    var fmt = TikkiesWidget.formatNumber;
+    var goalsEl = document.getElementById('goals');
+
+    var KEYS = ['likes', 'diamonds', 'followers'];
+    var DEFAULT_LABELS = {
+      likes: 'เป้าหมายหัวใจ ❤️',
+      diamonds: 'เป้าหมายเพชร 💎',
+      followers: 'ผู้ติดตามใหม่ ✨'
+    };
+
+    // ?goal=likes|diamonds|followers → แสดงตัวเดียว; ไม่ระบุ/ค่าเพี้ยน = ทุกตัวที่ enabled
+    var only = params.get('goal');
+    if (KEYS.indexOf(only) === -1) only = null;
+
+    // สร้าง skeleton ของทั้ง 3 หลอดล่วงหน้า (ซ่อนไว้ก่อน) — ลำดับคงที่เสมอ
+    var goalEls = {};
+    KEYS.forEach(function (key) {
+      var root = document.createElement('div');
+      root.className = 'goal';
+      root.style.display = 'none';
+      root.innerHTML =
+        '<div class="head">' +
+          '<span class="label"></span>' +
+          '<span class="right">' +
+            '<span class="done-badge">🎉 สำเร็จ!</span>' +
+            '<span class="value">0/0</span>' +
+          '</span>' +
+        '</div>' +
+        '<div class="bar"><div class="fill"></div></div>';
+      goalsEl.appendChild(root);
+      goalEls[key] = {
+        root: root,
+        labelEl: root.querySelector('.label'),
+        valueEl: root.querySelector('.value'),
+        fillEl: root.querySelector('.fill'),
+        shown: 0,      // ค่าที่กำลังแสดง (สำหรับ count-up)
+        target: 0,
+        animId: null
+      };
+    });
+
+    function setValueText(st, val) {
+      st.valueEl.textContent = fmt(Math.round(val)) + '/' + fmt(st.target);
+    }
+
+    // นับตัวเลขขึ้นแบบ ease-out ~0.6s (เข้าจังหวะกับ transition ของแถบ fill)
+    function animateCount(st, to) {
+      var from = st.shown;
+      if (st.animId) { cancelAnimationFrame(st.animId); st.animId = null; }
+      if (from === to) { setValueText(st, to); return; }
+      var start = performance.now();
+      var dur = 600;
+      function step(now) {
+        var t = Math.min(1, (now - start) / dur);
+        var eased = 1 - Math.pow(1 - t, 3);
+        st.shown = from + (to - from) * eased;
+        setValueText(st, st.shown);
+        if (t < 1) {
+          st.animId = requestAnimationFrame(step);
+        } else {
+          st.shown = to;
+          st.animId = null;
+        }
+      }
+      st.animId = requestAnimationFrame(step);
+    }
+
+    function onGoals(g) {
+      if (!g) return;
+      KEYS.forEach(function (key) {
+        var st = goalEls[key];
+        var cfg = g[key];
+        var show = !!(cfg && cfg.enabled) && (!only || only === key);
+        st.root.style.display = show ? '' : 'none';
+        if (!show) return;
+
+        st.target = Math.max(0, Number(cfg.target) || 0);
+        var current = Math.max(0, Number(cfg.current) || 0);
+
+        // label มาจากการตั้งค่าของผู้ใช้ — escape กัน XSS
+        st.labelEl.innerHTML = esc(cfg.label || DEFAULT_LABELS[key]);
+
+        // เกินเป้า = fill เต็ม 100% ค้างไว้
+        var pct = st.target > 0
+          ? Math.min(100, (current / st.target) * 100)
+          : (current > 0 ? 100 : 0);
+        st.fillEl.style.width = pct + '%';
+
+        st.root.classList.toggle('done', st.target > 0 && current >= st.target);
+        animateCount(st, current);
+      });
+    }
+
+    TikkiesWidget.connect({
+      onEvent: function (event, data) {
+        if (event === 'snapshot') return onGoals(data && data.goals);
+        if (event === 'goals') return onGoals(data);
+      }
+    });
+  })();
+  </script>
+</body>
+</html>

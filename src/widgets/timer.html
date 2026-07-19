@@ -1,0 +1,169 @@
+<!--
+  Tikkies Tools — Timer Widget (นาฬิกาถอยหลัง Subathon สำหรับ OBS Browser Source)
+
+  วิธีใช้:
+    เพิ่ม http://localhost:21213/widgets/timer.html เป็น Browser Source ใน OBS
+    (พื้นหลังโปร่งใส แนะนำขนาดกว้าง 360 สูง 140)
+
+  พารามิเตอร์ (ต่อท้าย URL):
+    ?size=72         ขนาดตัวเลขเวลา (px, ค่าเริ่มต้น 64)
+    ?host= / ?port=  กรณีเปิดจากเครื่อง/พอร์ตอื่น (ค่าเริ่มต้น localhost:21213)
+
+  ข้อมูล: ฟัง event 'timer' และตั้งค่าเริ่มต้นจาก snapshot.timer
+          เดินเวลาฝั่ง client เองทุกวินาที (กัน WebSocket ขาด) แล้ว sync ใหม่ทุก event
+-->
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tikkies — Timer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: transparent;
+    width: 100%; height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, 'Helvetica Neue', 'Thonburi', sans-serif;
+    color: #ececf1;
+  }
+  #box {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 14px 22px;
+    margin: 10px;
+    background: rgba(18, 18, 22, 0.6);
+    border-radius: 18px;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.4);
+    position: relative;
+  }
+  .label {
+    font-size: 15px; font-weight: 700;
+    opacity: 0.9;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  }
+  .time-wrap { display: flex; align-items: baseline; gap: 8px; position: relative; }
+  .time {
+    font-size: 64px;
+    font-weight: 800;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 1px;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+  }
+  .paused .time { opacity: 0.55; }
+  .pause-ico { font-size: 22px; opacity: 0.7; display: none; }
+  .paused .pause-ico { display: inline; }
+
+  /* เหลือน้อยกว่า 60 วิ: ตัวเลขแดงกะพริบ */
+  .danger .time { color: #ff4d5e; animation: blink 1s steps(2, start) infinite; }
+  @keyframes blink { 50% { opacity: 0.35; } }
+
+  /* "+N วิ" ลอยขึ้นแล้วจาง */
+  .float {
+    position: absolute;
+    right: -6px; top: -4px;
+    font-size: 18px; font-weight: 800;
+    color: #25f4ee;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+    animation: floatUp 1.3s ease-out forwards;
+  }
+  @keyframes floatUp {
+    0% { opacity: 0; transform: translateY(6px); }
+    20% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-26px); }
+  }
+</style>
+</head>
+<body>
+  <div id="box">
+    <div class="label" id="label">Timer</div>
+    <div class="time-wrap">
+      <span class="pause-ico">⏸</span>
+      <span class="time" id="time">00:00</span>
+    </div>
+  </div>
+
+  <script src="common/widget.js"></script>
+  <script>
+  (function () {
+    var params = TikkiesWidget.params;
+    var esc = TikkiesWidget.escapeHtml;
+
+    var size = parseInt(params.get('size'), 10);
+    var timeEl = document.getElementById('time');
+    var labelEl = document.getElementById('label');
+    var boxEl = document.getElementById('box');
+    if (size > 0) timeEl.style.fontSize = size + 'px';
+
+    // สถานะ local สำหรับเดินเวลาเองทุกวินาที
+    var state = {
+      remaining: 0,     // วินาทีที่เหลือ (อ้างอิงจาก event ล่าสุด)
+      running: false,
+      baseAt: Date.now(), // เวลาเครื่องตอนได้ event ล่าสุด (ms)
+      enabled: true
+    };
+
+    function fmtTime(totalSec) {
+      totalSec = Math.max(0, Math.floor(totalSec));
+      var h = Math.floor(totalSec / 3600);
+      var m = Math.floor((totalSec % 3600) / 60);
+      var s = totalSec % 60;
+      function p(n) { return (n < 10 ? '0' : '') + n; }
+      return (h > 0 ? p(h) + ':' : '') + p(m) + ':' + p(s);
+    }
+
+    // เวลาที่เหลือ ณ ตอนนี้ (หัก elapsed ถ้ากำลังเดิน)
+    function currentRemaining() {
+      if (!state.running) return state.remaining;
+      var elapsed = (Date.now() - state.baseAt) / 1000;
+      return Math.max(0, state.remaining - elapsed);
+    }
+
+    function tick() {
+      var rem = currentRemaining();
+      timeEl.textContent = fmtTime(rem);
+      boxEl.classList.toggle('paused', !state.running);
+      boxEl.classList.toggle('danger', rem > 0 && rem < 60);
+    }
+
+    function onTimer(t) {
+      if (!t) return;
+      state.remaining = Math.max(0, Number(t.remainingSec) || 0);
+      state.running = !!t.running;
+      state.enabled = t.enabled !== false;
+      state.baseAt = Date.now();
+      if (t.label) labelEl.textContent = esc(t.label);
+      // ซ่อนทั้งกล่องถ้า timer ปิดใช้งาน
+      boxEl.style.display = state.enabled ? '' : 'none';
+
+      // แสดง "+N วิ" เมื่อมีการเพิ่มเวลา
+      if (t.lastAdd && t.lastAdd.sec > 0) showFloat(t.lastAdd.sec);
+      tick();
+    }
+
+    var lastFloatKey = null;
+    function showFloat(sec) {
+      var f = document.createElement('div');
+      f.className = 'float';
+      f.textContent = '+' + sec + ' วิ';
+      boxEl.appendChild(f);
+      setTimeout(function () { f.remove(); }, 1400);
+    }
+
+    setInterval(tick, 1000);
+    tick();
+
+    TikkiesWidget.connect({
+      onEvent: function (event, data) {
+        if (event === 'snapshot') return onTimer(data && data.timer);
+        if (event === 'timer') return onTimer(data);
+      }
+    });
+  })();
+  </script>
+</body>
+</html>

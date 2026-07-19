@@ -1,0 +1,209 @@
+<!--
+  Tikkies Tools — Leaderboard Widget (อันดับผู้ให้ของขวัญ สำหรับ OBS Browser Source)
+
+  วิธีใช้:
+    เพิ่ม http://localhost:21213/widgets/leaderboard.html เป็น Browser Source ใน OBS
+    (พื้นหลังโปร่งใส แนะนำขนาดกว้าง 340 สูง 400)
+
+  พารามิเตอร์ (ต่อท้าย URL):
+    ?top=5           จำนวนอันดับที่แสดง (ค่าเริ่มต้น 5)
+    ?title=ข้อความ   เปลี่ยนหัวข้อ; ?title=0 เพื่อซ่อนหัวข้อ
+    ?host= / ?port=  กรณีเปิดจากเครื่อง/พอร์ตอื่น (ค่าเริ่มต้น localhost:21213)
+
+  ข้อมูล: ฟัง event 'leaderboard' และตั้งค่าเริ่มต้นจาก snapshot.leaderboard
+-->
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tikkies — Leaderboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: transparent;
+    width: 100%; height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, 'Helvetica Neue', 'Thonburi', sans-serif;
+    color: #ececf1;
+  }
+  #board { padding: 12px; }
+  .title {
+    font-weight: 800;
+    font-size: 18px;
+    margin-bottom: 12px;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  }
+  #rows { position: relative; }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(18, 18, 22, 0.6);
+    border-radius: 12px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
+  }
+  .row.enter { opacity: 0; transform: translateY(8px); }
+  .rank {
+    flex: 0 0 auto;
+    width: 26px; text-align: center;
+    font-weight: 800; font-size: 16px;
+    font-variant-numeric: tabular-nums;
+  }
+  .avatar {
+    flex: 0 0 auto;
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background-size: cover; background-position: center;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 16px; color: #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  }
+  .name {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-weight: 600; font-size: 15px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  }
+  .diamonds {
+    flex: 0 0 auto;
+    font-weight: 700; font-size: 15px;
+    font-variant-numeric: tabular-nums;
+    color: #7ce9ff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  }
+  /* อันดับ 1 เด่นกว่า + ขอบทอง */
+  .row.top1 {
+    background: linear-gradient(90deg, rgba(255, 190, 70, 0.22), rgba(18, 18, 22, 0.6));
+    box-shadow: inset 0 0 0 1.5px rgba(255, 200, 90, 0.7);
+    padding: 11px 12px;
+  }
+  .row.top1 .avatar { width: 44px; height: 44px; }
+  .row.top1 .name { font-size: 16px; }
+  .empty { opacity: 0.6; font-size: 14px; padding: 8px 4px; }
+</style>
+</head>
+<body>
+  <div id="board">
+    <div class="title" id="title"></div>
+    <div id="rows"><div class="empty" id="empty">ยังไม่มีผู้ให้ของขวัญ</div></div>
+  </div>
+
+  <script src="common/widget.js"></script>
+  <script>
+  (function () {
+    var params = TikkiesWidget.params;
+    var esc = TikkiesWidget.escapeHtml;
+    var fmt = TikkiesWidget.formatNumber;
+
+    var topN = parseInt(params.get('top'), 10);
+    if (!(topN > 0)) topN = 5;
+
+    var titleParam = params.get('title');
+    var titleEl = document.getElementById('title');
+    if (titleParam === '0') {
+      titleEl.style.display = 'none';
+    } else {
+      titleEl.textContent = titleParam || '🏆 ท็อปผู้สนับสนุน';
+    }
+
+    var rowsEl = document.getElementById('rows');
+    var emptyEl = document.getElementById('empty');
+    var MEDALS = ['🥇', '🥈', '🥉'];
+    var rowByKey = {}; // uniqueId -> element (เก็บไว้ทำ animate FLIP)
+
+    // สีวงกลม fallback จาก hash ของ uniqueId (เหมือน widget chat)
+    function colorFor(id) {
+      var h = 0, s = String(id || '?');
+      for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+      return 'hsl(' + h + ', 55%, 45%)';
+    }
+
+    function buildRow(item, idx) {
+      var row = document.createElement('div');
+      row.className = 'row enter' + (idx === 0 ? ' top1' : '');
+      var rankTxt = idx < 3 ? MEDALS[idx] : String(idx + 1);
+      var initial = esc((item.nickname || item.uniqueId || '?').trim().charAt(0) || '?');
+      var avatarStyle = item.profilePictureUrl
+        ? 'background-image:url(' + JSON.stringify(item.profilePictureUrl) + ')'
+        : 'background-color:' + colorFor(item.uniqueId);
+      row.innerHTML =
+        '<div class="rank">' + rankTxt + '</div>' +
+        '<div class="avatar" style="' + avatarStyle + '">' +
+          (item.profilePictureUrl ? '' : initial) + '</div>' +
+        '<div class="name">' + esc(item.nickname || item.uniqueId || 'ไม่ทราบชื่อ') + '</div>' +
+        '<div class="diamonds">💎 ' + fmt(item.diamonds || 0) + '</div>';
+      return row;
+    }
+
+    function render(top) {
+      top = Array.isArray(top) ? top.slice(0, topN) : [];
+      emptyEl.style.display = top.length ? 'none' : '';
+
+      // ตำแหน่งเดิม (สำหรับ FLIP animate)
+      var firstPos = {};
+      Object.keys(rowByKey).forEach(function (k) {
+        firstPos[k] = rowByKey[k].getBoundingClientRect().top;
+      });
+
+      var seen = {};
+      var prevRow = null;
+      top.forEach(function (item, idx) {
+        var key = item.uniqueId || ('idx' + idx);
+        seen[key] = true;
+        var row = rowByKey[key];
+        if (!row) {
+          row = buildRow(item, idx);
+          rowByKey[key] = row;
+          // แทรกตามลำดับ
+          if (prevRow && prevRow.nextSibling) rowsEl.insertBefore(row, prevRow.nextSibling);
+          else rowsEl.appendChild(row);
+          requestAnimationFrame(function () { row.classList.remove('enter'); });
+        } else {
+          // อัปเดตเนื้อหา/อันดับ
+          var fresh = buildRow(item, idx);
+          fresh.classList.remove('enter');
+          row.className = fresh.className;
+          row.innerHTML = fresh.innerHTML;
+          // ย้ายให้อยู่ถูกลำดับ
+          if (prevRow) { if (prevRow.nextSibling !== row) rowsEl.insertBefore(row, prevRow.nextSibling); }
+          else if (rowsEl.firstChild !== row) rowsEl.insertBefore(row, rowsEl.firstChild);
+        }
+        prevRow = row;
+      });
+
+      // ลบแถวที่หลุด top
+      Object.keys(rowByKey).forEach(function (k) {
+        if (!seen[k]) { rowByKey[k].remove(); delete rowByKey[k]; }
+      });
+
+      // FLIP: เลื่อนจากตำแหน่งเดิม → ใหม่แบบลื่น
+      Object.keys(rowByKey).forEach(function (k) {
+        if (firstPos[k] === undefined) return;
+        var lastTop = rowByKey[k].getBoundingClientRect().top;
+        var dy = firstPos[k] - lastTop;
+        if (dy) {
+          var el = rowByKey[k];
+          el.style.transition = 'none';
+          el.style.transform = 'translateY(' + dy + 'px)';
+          requestAnimationFrame(function () {
+            el.style.transition = '';
+            el.style.transform = '';
+          });
+        }
+      });
+    }
+
+    TikkiesWidget.connect({
+      onEvent: function (event, data) {
+        if (event === 'snapshot') return render(data && data.leaderboard && data.leaderboard.top);
+        if (event === 'leaderboard') return render(data && data.top);
+      }
+    });
+  })();
+  </script>
+</body>
+</html>
