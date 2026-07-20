@@ -61,6 +61,13 @@
     display: flex; align-items: center; justify-content: center;
     font-weight: 700; font-size: 16px; color: #fff;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+    position: relative; overflow: hidden;
+  }
+  /* รูปจริงซ้อนทับตัวอักษร — โหลดพังจะถูก onerror ลบทิ้ง เหลือตัวอักษรให้เห็น */
+  .avatar img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover; border-radius: 50%;
   }
   .name {
     flex: 1 1 auto;
@@ -128,13 +135,15 @@
       row.className = 'row enter' + (idx === 0 ? ' top1' : '');
       var rankTxt = idx < 3 ? MEDALS[idx] : String(idx + 1);
       var initial = esc((item.nickname || item.uniqueId || '?').trim().charAt(0) || '?');
-      var avatarStyle = item.profilePictureUrl
-        ? 'background-image:url(' + JSON.stringify(item.profilePictureUrl) + ')'
-        : 'background-color:' + colorFor(item.uniqueId);
+      // วางตัวอักษร+สีเป็นพื้นเสมอ แล้วซ้อน <img> ทับ — รูปโหลดพัง (ลิงก์ TikTok หมดอายุ/โดนบล็อค)
+      // ก็ยังเห็นตัวอักษรแทนที่จะเป็นวงกลมว่างเปล่า
+      var avatarImg = item.profilePictureUrl
+        ? '<img src="' + esc(item.profilePictureUrl) + '" alt="" referrerpolicy="no-referrer" loading="lazy" onerror="this.remove()">'
+        : '';
       row.innerHTML =
         '<div class="rank">' + rankTxt + '</div>' +
-        '<div class="avatar" style="' + avatarStyle + '">' +
-          (item.profilePictureUrl ? '' : initial) + '</div>' +
+        '<div class="avatar" style="background-color:' + colorFor(item.uniqueId) + '">' +
+          initial + avatarImg + '</div>' +
         '<div class="name">' + esc(item.nickname || item.uniqueId || 'ไม่ทราบชื่อ') + '</div>' +
         '<div class="diamonds">💎 ' + fmt(item.diamonds || 0) + '</div>';
       return row;

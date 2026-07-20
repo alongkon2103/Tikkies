@@ -428,18 +428,21 @@
     var shownAt = 0;
     var hideTimer = null;
     var advanceTimer = null;
+    var gapTimer = null;   // ช่องว่างระหว่างใบ — ระหว่างนี้ busy ยังเป็น true กัน next() ซ้อน
     var currentCard = null;
 
     function enqueue(item) {
       queue.push(item);
       while (queue.length > 50) queue.shift(); // กันคิวบวมตอนโดนถล่ม
-      if (!busy) next();
+      // ห้ามเรียก next() ตรงๆ ระหว่างรอ gap — เดิมทำให้ next() ยิงซ้อน 2 ทาง
+      // (จาก enqueue + จาก timer ของ finish) จนการ์ดโผล่ 2 ใบและใบแรกค้างไม่หาย
+      if (!busy && !gapTimer) next();
       else scheduleAdvance();
     }
 
     // มีคิวรอ → ตัดจบใบปัจจุบันทันทีที่ครบ 2.5 วิ เพื่อเล่นต่อเนื่อง
     function scheduleAdvance() {
-      if (!busy || hiding || !queue.length || advanceTimer) return;
+      if (!busy || hiding || !currentCard || !queue.length || advanceTimer) return;
       var wait = Math.max(0, MIN_MS - (Date.now() - shownAt));
       advanceTimer = setTimeout(function () {
         advanceTimer = null;
@@ -488,9 +491,14 @@
 
     function finish() {
       currentCard = null;
-      busy = false;
       hiding = false;
-      setTimeout(next, GAP_MS);
+      // คง busy = true ตลอดช่วง gap — enqueue ที่เข้ามาระหว่างนี้จะไม่แซงเรียก next() เอง
+      if (gapTimer) clearTimeout(gapTimer);
+      gapTimer = setTimeout(function () {
+        gapTimer = null;
+        busy = false;
+        if (queue.length) next();
+      }, GAP_MS);
     }
 
     // ---- แปลง event → รายการแจ้งเตือน ----
