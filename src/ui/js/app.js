@@ -519,7 +519,9 @@
     switch (t.type) {
       case 'gift': return t.giftName ? ('เมื่อได้รับ ' + t.giftName + (t.minDiamonds ? ' (≥' + t.minDiamonds + '💎)' : '')) : 'เมื่อได้รับของขวัญใดๆ' + (t.minDiamonds ? ' (≥' + t.minDiamonds + '💎)' : '');
       case 'chat': return t.keyword ? ('เมื่อแชทมี "' + t.keyword + '"') : 'เมื่อมีข้อความแชท';
-      case 'like': return 'เมื่อครบทุกๆ ' + (t.likeThreshold || 0) + ' ไลค์';
+      case 'like': return t.likeMode === 'perUser'
+        ? ('เมื่อผู้ชมคนหนึ่งกดครบทุกๆ ' + (t.likeThreshold || 0) + ' ไลค์')
+        : ('เมื่อยอดไลค์รวมครบทุกๆ ' + (t.likeThreshold || 0) + ' ไลค์');
       case 'follow': return 'เมื่อมีผู้ติดตามใหม่';
       case 'share': return 'เมื่อมีคนแชร์';
       case 'subscribe': return 'เมื่อมีสมาชิกใหม่';

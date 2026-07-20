@@ -190,13 +190,33 @@ function handleEvent(eventType, data) {
     if (!trigger || trigger.type !== eventType) continue;
 
     if (eventType === 'like') {
-      // ยิงเมื่อ "ยอดไลค์รวมจริงของห้อง" ข้ามหลักใหม่ของ likeThreshold (เช่นทุก 1,000 → 1000, 2000, ...)
       const threshold = Number(trigger.likeThreshold) || 0;
       if (threshold <= 0) continue;
+
+      // โหมด perUser: นับไลค์สะสม "รายคน" — ยิงเมื่อผู้ชมคนหนึ่งกดครบทุกๆ N ของตัวเอง
+      // (แต่ละคนมีตัวนับ+คูลดาวน์ของตัวเอง; {nickname} = คนที่กดถึง)
+      if (trigger.likeMode === 'perUser') {
+        let st = likeState.get(action.id);
+        if (!st || !st.users) { st = { users: new Map() }; likeState.set(action.id, st); }
+        const uid = String(data.uniqueId || data.userId || 'unknown');
+        const u = st.users.get(uid) || { count: 0, lastMilestone: 0, lastFired: 0 };
+        u.count += Number(data.likeCount) || 0;
+        const milestone = Math.floor(u.count / threshold);
+        const cdMs = (Number(action.cooldownSec) || 0) * 1000;
+        if (milestone > u.lastMilestone && (cdMs <= 0 || now - u.lastFired >= cdMs)) {
+          u.lastMilestone = milestone;
+          u.lastFired = now;
+          fire(action, eventType, Object.assign({}, data, { likeCount: milestone * threshold, userLikes: u.count, totalLikes: latestTotalLikes }));
+        }
+        st.users.set(uid, u);
+        continue;
+      }
+
+      // โหมด total (เดิม): ยิงเมื่อ "ยอดไลค์รวมจริงของห้อง" ข้ามหลักใหม่ (เช่นทุก 1,000 → 1000, 2000, ...)
       const total = latestTotalLikes; // อัปเดตไว้แล้วก่อนเข้าลูป (ดู handleEvent)
       let st = likeState.get(action.id);
-      if (!st) {
-        // init เป็นหลักปัจจุบัน กันยิงย้อนหลังตอนเชื่อมกลางไลฟ์
+      if (!st || st.users) {
+        // init เป็นหลักปัจจุบัน กันยิงย้อนหลังตอนเชื่อมกลางไลฟ์ (st.users = เคยเป็นโหมด perUser → รีเซ็ต)
         st = { lastMilestone: Math.floor(total / threshold) };
         likeState.set(action.id, st);
       }

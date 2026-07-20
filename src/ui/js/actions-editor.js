@@ -255,9 +255,24 @@ window.ActionsEditor = (function () {
       kw.addEventListener('input', function () { trigger.keyword = kw.value; });
       container.appendChild(field('คำ/คำสั่งในแชท', kw, 'จับแบบมีคำนี้อยู่ในข้อความ (ไม่สนตัวพิมพ์เล็ก-ใหญ่)'));
     } else if (trigger.type === 'like') {
-      var th = el('input', { type: 'number', min: '1', value: trigger.likeThreshold || 1000 });
+      trigger.likeMode = trigger.likeMode === 'perUser' ? 'perUser' : 'total';
+      var modeSel = el('select', {}, opt([
+        { v: 'total', t: 'ยอดไลค์รวมทั้งห้อง (ทุกคนรวมกัน)' },
+        { v: 'perUser', t: 'รายคน (ผู้ชมแต่ละคนกดครบเอง)' }
+      ], trigger.likeMode));
+      modeSel.addEventListener('change', function () {
+        trigger.likeMode = modeSel.value;
+        renderTriggerFields(container, trigger); // เปลี่ยนโหมด → ฟิลด์/คำอธิบายเปลี่ยนตาม
+      });
+      container.appendChild(field('นับไลค์แบบ', modeSel));
+
+      var th = el('input', { type: 'number', min: '1', value: trigger.likeThreshold || (trigger.likeMode === 'perUser' ? 50 : 1000) });
       th.addEventListener('input', function () { trigger.likeThreshold = Number(th.value) || 0; });
-      container.appendChild(field('ยิงทุกๆ กี่ไลค์ (อิงยอดรวมจริงของห้อง)', th, 'เช่น 1000 = ยิงเมื่อยอดรวมแตะ 1000, 2000, 3000 ... (เชื่อมกลางไลฟ์จะเริ่มนับจากหลักปัจจุบัน)'));
+      if (trigger.likeMode === 'perUser') {
+        container.appendChild(field('จำนวนไลค์ต่อคน', th, 'เช่น 50 = ยิงเมื่อผู้ชม "คนหนึ่ง" กดครบ 50 (และทุกๆ 50 ถัดไปของคนนั้น) — ใช้ {nickname} ในข้อความเพื่อบอกว่าใคร · แต่ละคนมีตัวนับ+คูลดาวน์ของตัวเอง'));
+      } else {
+        container.appendChild(field('ยิงทุกๆ กี่ไลค์ (ยอดรวมทั้งห้อง)', th, 'เช่น 1000 = ยิงเมื่อยอดรวมแตะ 1000, 2000, 3000 ... (เชื่อมกลางไลฟ์จะเริ่มนับจากหลักปัจจุบัน)'));
+      }
     } else if (trigger.type === 'hotkey') {
       container.appendChild(acceleratorField(trigger));
     } else if (trigger.type === 'wheelResult') {

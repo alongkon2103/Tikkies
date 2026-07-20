@@ -1,0 +1,292 @@
+{
+  "app": "tikkies-tools",
+  "type": "actions",
+  "version": 1,
+  "exportedAt": "2026-07-20T00:00:00.000Z",
+  "note": "สร้างจากชุด TikFinity (เกมกดเลข/ปุ่ม) — ของขวัญ→ปุ่มคีย์บอร์ด",
+  "count": 15,
+  "actions": [
+    {
+      "id": "a_imp01",
+      "name": "Watermelon Love → กด V (+10 win)",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "Watermelon Love",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "v",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp02",
+      "name": "Galaxy → กด N (-10 win)",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "Galaxy",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "n",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp03",
+      "name": "You’re Amazing → กด P (+ 5WIN)",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "You’re Amazing",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "p",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp04",
+      "name": "Money Gun → กด K (-5 WIN)",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "Money Gun",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "k",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp05",
+      "name": "Hand Hearts → กด 9 (+1 WIN)",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "Hand Hearts",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "9",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp06",
+      "name": "Rosa → กด 3 (-250)",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "Rosa",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "3",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp07",
+      "name": "Friendship Necklace → กด 7 (+250)",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "Friendship Necklace",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "7",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp08",
+      "name": "Perfume → กด 8 (+1000)",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "Perfume",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "8",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp09",
+      "name": "GG → กด 2 (-25)",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "GG",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "2",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp10",
+      "name": "Confetti → กด 0 (-1 WIN)",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "Confetti",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "0",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp11",
+      "name": "Doughnut → กด 4 (-1000)",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "Doughnut",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "4",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp12",
+      "name": "Heart Me → กด G (RANDOM)",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "Heart Me",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "g",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp13",
+      "name": "Rose → กด 6 (+25)",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "gift",
+        "giftName": "Rose",
+        "minDiamonds": 0
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "6",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp14",
+      "name": "ผู้ติดตามใหม่ → กด 1 (-10)",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "follow"
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "1",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    },
+    {
+      "id": "a_imp15",
+      "name": "ทุกๆ 50 ไลค์ → กด 5 (+10)",
+      "enabled": true,
+      "cooldownSec": 0,
+      "trigger": {
+        "type": "like",
+        "likeThreshold": 50
+      },
+      "responses": [
+        {
+          "type": "keypress",
+          "key": "5",
+          "modifiers": [],
+          "holdMs": 0
+        }
+      ]
+    }
+  ]
+}
