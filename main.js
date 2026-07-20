@@ -233,7 +233,10 @@ const handlers = {
         { name: 'สื่อ', extensions: ['mp3', 'wav', 'ogg', 'gif', 'png', 'jpg', 'jpeg', 'webp', 'webm', 'mp4'] }
       ]
     });
-    return res.canceled ? null : res.filePaths[0];
+    if (res.canceled || !res.filePaths[0]) return null;
+    // คืนเป็น file:// URL ที่ถูกต้องทุก OS (Windows drive letter/backslash/space/unicode)
+    // — new Audio()/<img> ฝั่ง renderer โหลดได้เลย ไม่ต้องประกอบ URL เอง (เดิมพังบน Windows)
+    return require('url').pathToFileURL(res.filePaths[0]).href;
   }
 };
 

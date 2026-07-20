@@ -453,9 +453,17 @@ window.ActionsEditor = (function () {
     return field(label, el('div', { class: 'url-row' }, [inp, btn]));
   }
 
+  // app:pickFile คืน file:// URL ที่ถูกต้องมาแล้ว (ผ่านตรงนี้ไปเลย);
+  // ฟังก์ชันนี้เหลือไว้เผื่อผู้ใช้ "วาง path เอง" — รองรับทั้ง Windows (C:\..) และ POSIX (/..)
   function toFileUrl(p) {
-    if (/^https?:|^file:/.test(p)) return p;
-    return 'file://' + p.split('/').map(encodeURIComponent).join('/');
+    p = String(p || '').trim();
+    if (/^(https?|file):/i.test(p)) return p;      // เป็น URL อยู่แล้ว
+    var s = p.replace(/\\/g, '/');                 // \ → /
+    if (/^[a-zA-Z]:\//.test(s)) s = '/' + s;       // C:/x → /C:/x (ให้ได้ file:///C:/x)
+    var enc = s.split('/').map(function (seg) {
+      return encodeURIComponent(seg).replace(/%3A/gi, ':'); // คง ':' ของ drive letter
+    }).join('/');
+    return 'file://' + enc;
   }
 
   // ---- ค่าเริ่มต้นของ response แต่ละชนิดตอนเพิ่มใหม่ ----
