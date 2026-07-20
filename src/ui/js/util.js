@@ -90,6 +90,7 @@ window.Tk = (function () {
   function modal(node) {
     var host = $('#modalHost');
     host.innerHTML = '';
+    host.classList.remove('has-iframe'); // กันคลาสจากหน้าแต่งธีมค้างมาถึง modal ปกติ
     var box = el('div', { class: 'modal' });
     box.appendChild(node);
     host.appendChild(box);

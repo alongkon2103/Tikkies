@@ -769,6 +769,11 @@
       ])
     ]);
     m = Tk.modal(body);
+    // OOPIF (iframe ข้าม origin) ทำ modal โปร่งทะลุ — บังคับพื้นทึบ + ปิด blur ระหว่างเปิดหน้านี้
+    var host = $('#modalHost');
+    host.classList.add('has-iframe');
+    var origClose = m.close;
+    m.close = function () { host.classList.remove('has-iframe'); origClose(); };
   }
 
   // ---------- TTS form ----------
