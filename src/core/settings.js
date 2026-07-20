@@ -9,6 +9,7 @@ const DEFAULTS = {
   signApiKey: '', // Euler Stream API key (ไม่บังคับ — ช่วยเพิ่ม rate limit ในการเชื่อมต่อ)
   serverPort: 21213,
   language: 'th',
+  disconnectAlarm: true, // เสียงดัง + แจ้งเตือนระบบเมื่อหลุดจากไลฟ์โดยไม่ได้ตั้งใจ
   tts: {
     enabled: true,
     playInApp: true, // ให้หน้า Dashboard เป็นคนอ่านเสียง (OBS browser source มักไม่รองรับ speechSynthesis)
@@ -110,6 +111,15 @@ function load() {
     }
   } catch (err) {
     bus.emit('log', { level: 'warn', msg: 'อ่าน settings.json ไม่สำเร็จ ใช้ค่าเริ่มต้นแทน: ' + err.message });
+  }
+  // migration: โปรไฟล์ Actions — ชุดที่ active อยู่ใน data.actions (engine อ่านตรงนั้นที่เดียว)
+  // ชุดอื่นเก็บ actions ของตัวเองไว้ใน actionProfiles[i].actions; สลับ = ย้าย array (ฝั่ง UI)
+  if (!Array.isArray(data.actionProfiles) || !data.actionProfiles.length) {
+    data.actionProfiles = [{ id: 'p_default', name: 'ชุดหลัก' }];
+    data.activeProfile = 'p_default';
+  }
+  if (!data.activeProfile || !data.actionProfiles.some(p => p && p.id === data.activeProfile)) {
+    data.activeProfile = data.actionProfiles[0].id;
   }
   return data;
 }

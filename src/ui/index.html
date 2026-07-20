@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- img-src อนุญาต http://localhost ด้วย — รูปที่อัพโหลด (เช่นช่องรางวัล) เสิร์ฟผ่าน overlay server ในเครื่อง -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: http://localhost:* http://127.0.0.1:*; media-src 'self' https: file: data: http://localhost:* http://127.0.0.1:*; connect-src 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: http://localhost:* http://127.0.0.1:*; media-src 'self' https: file: data: http://localhost:* http://127.0.0.1:*; connect-src 'self'; frame-src 'self' http://localhost:* http://127.0.0.1:*;">
 <title>Tikkies Tools</title>
 <link rel="stylesheet" href="css/app.css">
 </head>
@@ -36,6 +36,7 @@
       <button class="nav-item" data-tab="tts" data-icon="tts">เสียงอ่าน (TTS)</button>
       <button class="nav-item" data-tab="goals" data-icon="goals">เป้าหมาย & Timer</button>
       <button class="nav-item" data-tab="wheel" data-icon="sparkles">สุ่มรางวัล</button>
+      <button class="nav-item" data-tab="history" data-icon="clock">ประวัติไลฟ์</button>
       <button class="nav-item" data-tab="settings" data-icon="settings">ตั้งค่า</button>
     </nav>
 
@@ -144,6 +145,8 @@
       <div class="row-between">
         <h1>Actions</h1>
         <div class="action-toolbar">
+          <select id="profileSelect" class="profile-select" title="ชุด Actions — สลับตามเกม/สถานการณ์"></select>
+          <button class="btn btn-sm" id="profileManageBtn" title="จัดการชุด Actions">จัดการชุด</button>
           <button class="btn btn-sm" id="importActionsBtn" data-icon="download">นำเข้า</button>
           <button class="btn btn-sm" id="exportActionsBtn" data-icon="upload">ส่งออก</button>
           <button class="btn btn-primary" id="newActionBtn" data-icon="plus">สร้าง Action</button>
@@ -293,6 +296,19 @@
       </div>
     </section>
 
+    <!-- ประวัติไลฟ์ -->
+    <section class="tab" data-tab="history" hidden>
+      <div class="row-between">
+        <h1>ประวัติไลฟ์</h1>
+        <div class="action-toolbar">
+          <button class="btn btn-sm" id="exportSessionsBtn" data-icon="upload">ส่งออกประวัติ (CSV)</button>
+          <button class="btn btn-sm" id="exportGiftersBtn" data-icon="trophy">ส่งออกผู้สนับสนุน (CSV)</button>
+        </div>
+      </div>
+      <p class="muted">สถิติแต่ละไลฟ์ถูกบันทึกอัตโนมัติเมื่อจบไลฟ์ — คลิกแถวเพื่อดูท็อปผู้ให้ของขวัญของไลฟ์นั้น · "ส่งออกผู้สนับสนุน" รวมยอดทุกไลฟ์ ไว้ดูว่าใครสนับสนุนประจำ</p>
+      <div id="sessionsList" class="actions-list"></div>
+    </section>
+
     <!-- ตั้งค่า -->
     <section class="tab" data-tab="settings" hidden>
       <h1>ตั้งค่า</h1>
@@ -305,6 +321,9 @@
         <div class="field">
           <label>Sign API Key <span class="muted small">(ไม่บังคับ — เพิ่มโควต้าการเชื่อมต่อ ขอได้ที่ eulerstream.com)</span></label>
           <input type="text" data-setting="signApiKey" placeholder="ปล่อยว่างได้">
+        </div>
+        <div class="field">
+          <label class="check-inline"><input type="checkbox" data-setting="disconnectAlarm"> เสียงเตือน + แจ้งเตือนระบบเมื่อหลุดจากไลฟ์ <span class="muted small">(ได้ยินแม้เล่นเกมเต็มจอ)</span></label>
         </div>
       </div>
       <div class="card">

@@ -45,7 +45,7 @@
     padding: 12px 20px;
     background: rgba(28, 28, 34, 0.92);           /* การ์ด #1c1c22 */
     color: #ececf1;
-    border-left: 4px solid #fe2c55;               /* สีหลัก */
+    border-left: 4px solid var(--accent, #fe2c55); /* สีหลัก */
     border-radius: 10px;
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
     font-size: 22px;
@@ -78,6 +78,20 @@
   }
   #unlock-hint.show { display: block; }
 </style>
+<script>
+/* ?accent=rrggbb — สีหลักของ widget (ตั้งจากหน้าแต่งธีมในแอป) */
+(function () {
+  var a = new URLSearchParams(location.search).get('accent');
+  if (!a || !/^[0-9a-f]{6}$/i.test(a)) return;
+  var n = parseInt(a, 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  var s = document.documentElement.style;
+  s.setProperty('--accent', '#' + a);
+  s.setProperty('--accent2', '#' + a);
+  s.setProperty('--accent-glow', 'rgba(' + r + ',' + g + ',' + b + ',0.55)');
+  s.setProperty('--accent-weak', 'rgba(' + r + ',' + g + ',' + b + ',0.22)');
+  s.setProperty('--accent-ring', 'rgba(' + r + ',' + g + ',' + b + ',0.7)');
+})();
+</script>
 </head>
 <body>
   <div id="unlock-hint">เบราว์เซอร์บล็อกเสียงอยู่ — คลิกที่หน้านี้ 1 ครั้งเพื่ออนุญาตให้อ่านเสียง</div>

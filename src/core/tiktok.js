@@ -380,7 +380,8 @@ function handleDisconnect() {
   const wasConnected = state.status === 'connected';
   if (state.status === 'connected') setStatus('disconnected');
   state.roomId = null;
-  bus.emit('disconnected', { username: state.username });
+  // unexpected = หลุดเองโดยไม่ได้กดตัด — ให้ฝั่ง UI/main ส่งเสียง+แจ้งเตือนได้
+  bus.emit('disconnected', { username: state.username, unexpected: wasConnected && wantConnected });
   // หลุดโดยไม่ตั้งใจ → ลองต่อใหม่อัตโนมัติ (สูงสุด 5 ครั้ง, backoff)
   if (wantConnected && wasConnected && reconnectAttempts < 5) {
     reconnectAttempts += 1;

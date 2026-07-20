@@ -279,6 +279,16 @@ textarea { resize: vertical; }
 
 /* ===== Actions ===== */
 .action-toolbar { display: flex; align-items: center; gap: 6px; }
+.profile-select { width: auto; min-width: 130px; font-weight: 600; }
+.profile-row {
+  display: flex; align-items: center; gap: 8px; padding: 7px 9px;
+  border: 1px solid var(--line); border-radius: 8px; margin-bottom: 6px;
+}
+.profile-row.active { border-color: var(--accent); background: var(--accent-weak); }
+.profile-row input { flex: 1; }
+.profile-badge { font-size: 10px; font-weight: 700; color: var(--accent); width: 38px; flex: 0 0 auto; }
+.profile-count { font-size: 11px; color: var(--muted); flex: 0 0 auto; white-space: nowrap; }
+.profile-add-row { display: flex; gap: 6px; margin-top: 4px; }
 .actions-list { display: flex; flex-direction: column; gap: 7px; }
 .action-card {
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
@@ -535,6 +545,28 @@ textarea { resize: vertical; }
 .seg-row .seg-img-btn { width: 30px; height: 30px; padding: 0; border: 1px dashed var(--line-strong); flex: 0 0 auto; }
 .seg-row .seg-thumb { width: 24px; height: 24px; object-fit: contain; border-radius: 4px; }
 .seg-row .seg-weight { width: 64px; flex: 0 0 auto; text-align: center; }
+
+/* ===== หน้าแต่งธีม widget ===== */
+.modal:has(.wc-modal) { width: 880px; } /* หน้าแต่งธีมกว้างกว่า modal ปกติ */
+.wc-cols { display: grid; grid-template-columns: 220px 1fr; gap: 14px; margin-bottom: 10px; }
+.wc-form { min-width: 0; }
+.wc-preview-wrap { min-width: 0; }
+.wc-preview {
+  width: 100%; height: 300px; border: 1px dashed var(--line-strong); border-radius: 9px;
+  background:
+    linear-gradient(45deg, rgba(127,127,127,0.13) 25%, transparent 25%, transparent 75%, rgba(127,127,127,0.13) 75%),
+    linear-gradient(45deg, rgba(127,127,127,0.13) 25%, transparent 25%, transparent 75%, rgba(127,127,127,0.13) 75%);
+  background-size: 18px 18px; background-position: 0 0, 9px 9px; /* ลายหมากรุก = โปร่งใส */
+}
+
+/* ===== ประวัติไลฟ์ ===== */
+.sess-card { cursor: pointer; align-items: flex-start; }
+.sess-stats { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--text-2); margin-top: 4px; }
+.sess-detail { margin-top: 9px; border-top: 1px solid var(--line); padding-top: 8px; }
+.sess-gifter { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 3px 0; }
+.sess-gifter .rank { color: var(--muted); width: 20px; text-align: right; font-variant-numeric: tabular-nums; }
+.sess-gifter .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sess-gifter .dm { color: var(--accent-2); font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* ===== คีย์ลัด ===== */
 .hk-kbd {

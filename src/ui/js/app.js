@@ -35,6 +35,7 @@
       applyTimer(st.timer);
       renderTemplates();
       renderActions();
+      renderProfileBar();
       renderWidgets();
       bindWheelTab();
       bindSettingsForms();
@@ -101,7 +102,25 @@
     // เหตุการณ์สด
     $('#clearEvents').addEventListener('click', function () { $('#eventFeed').innerHTML = ''; });
 
-    // Actions — ส่งออก/นำเข้า
+    // ประวัติไลฟ์
+    $('#exportSessionsBtn').addEventListener('click', function () {
+      invoke('sessions:exportCsv', { kind: 'sessions' }).then(function (r) {
+        if (r && r.ok) toast('ส่งออกประวัติไลฟ์แล้ว', 'ok');
+      });
+    });
+    $('#exportGiftersBtn').addEventListener('click', function () {
+      invoke('sessions:exportCsv', { kind: 'gifters' }).then(function (r) {
+        if (r && r.ok) toast('ส่งออกรายชื่อผู้สนับสนุนแล้ว', 'ok');
+      });
+    });
+    // โหลดรายการใหม่ทุกครั้งที่เข้าแท็บ (มี session ใหม่จบระหว่างเปิดแอปได้)
+    $$('.nav-item').forEach(function (b) {
+      if (b.dataset.tab === 'history') b.addEventListener('click', renderSessions);
+    });
+
+    // Actions — โปรไฟล์ / ส่งออก / นำเข้า
+    $('#profileSelect').addEventListener('change', function () { switchProfile(this.value); });
+    $('#profileManageBtn').addEventListener('click', openProfileManager);
     $('#exportActionsBtn').addEventListener('click', exportActions);
     $('#importActionsBtn').addEventListener('click', importActions);
 
@@ -305,6 +324,111 @@
     if (atBottom) feed.scrollTop = feed.scrollHeight;
   }
 
+  // ---------- โปรไฟล์ Actions (สลับชุดตามเกม) ----------
+  // ชุดที่ใช้อยู่ = S.settings.actions (engine อ่านที่เดียว); ชุดอื่นเก็บใน actionProfiles[i].actions
+  function activeProfile() {
+    var list = S.settings.actionProfiles || [];
+    return list.filter(function (p) { return p.id === S.settings.activeProfile; })[0] || list[0];
+  }
+
+  function renderProfileBar() {
+    var sel = $('#profileSelect');
+    var list = S.settings.actionProfiles || [];
+    sel.innerHTML = '';
+    list.forEach(function (p) {
+      sel.appendChild(el('option', { value: p.id, text: p.name, selected: p.id === S.settings.activeProfile ? 'selected' : null }));
+    });
+  }
+
+  function switchProfile(id) {
+    if (id === S.settings.activeProfile) return;
+    var list = S.settings.actionProfiles || [];
+    var target = list.filter(function (p) { return p.id === id; })[0];
+    if (!target) return;
+    // เก็บชุดปัจจุบันกลับเข้าโปรไฟล์เดิม แล้วดึงชุดใหม่ขึ้นมาใช้
+    var cur = activeProfile();
+    if (cur) cur.actions = S.settings.actions || [];
+    S.settings.actions = target.actions || [];
+    delete target.actions; // ชุด active ไม่เก็บซ้ำในโปรไฟล์ (กันข้อมูลเบิ้ล)
+    S.settings.activeProfile = id;
+    saveSettings({ actionProfiles: list, activeProfile: id, actions: S.settings.actions }, true);
+    renderActions();
+    renderProfileBar();
+    toast('สลับเป็นชุด "' + target.name + '" (' + (S.settings.actions || []).length + ' actions)', 'ok');
+  }
+
+  function openProfileManager() {
+    var list = S.settings.actionProfiles || [];
+    var m;
+    var host = el('div', {});
+
+    function persistProfiles(extra) {
+      saveSettings(Object.assign({ actionProfiles: list, activeProfile: S.settings.activeProfile }, extra || {}), true);
+      renderProfileBar();
+      renderRows();
+    }
+
+    function renderRows() {
+      host.innerHTML = '';
+      list.forEach(function (p, idx) {
+        var isActive = p.id === S.settings.activeProfile;
+        var count = isActive ? (S.settings.actions || []).length : (p.actions || []).length;
+        var nameInp = el('input', { type: 'text', value: p.name });
+        nameInp.addEventListener('change', function () {
+          p.name = nameInp.value.trim() || 'ชุดไม่มีชื่อ';
+          persistProfiles();
+        });
+        host.appendChild(el('div', { class: 'profile-row' + (isActive ? ' active' : '') }, [
+          el('span', { class: 'profile-badge', text: isActive ? 'ใช้อยู่' : '' }),
+          nameInp,
+          el('span', { class: 'profile-count', text: count + ' actions' }),
+          el('button', { class: 'btn btn-ghost btn-sm', text: 'ใช้ชุดนี้', disabled: isActive ? 'disabled' : null, onclick: function () {
+            m.close(); switchProfile(p.id);
+          } }),
+          el('button', { class: 'btn btn-danger btn-sm icon-btn', title: 'ลบชุดนี้', disabled: list.length <= 1 ? 'disabled' : null, onclick: async function () {
+            if (!(await Tk.confirmDialog('ลบชุด "' + p.name + '" (' + count + ' actions) ?', 'ลบ'))) return;
+            list.splice(idx, 1);
+            if (isActive) {
+              // ลบชุดที่ใช้อยู่ → สลับไปชุดแรกที่เหลือ
+              var nx = list[0];
+              S.settings.actions = nx.actions || [];
+              delete nx.actions;
+              S.settings.activeProfile = nx.id;
+              persistProfiles({ actions: S.settings.actions });
+              renderActions();
+            } else {
+              persistProfiles();
+            }
+          } }, [window.Icon.el('trash', 13)])
+        ]));
+      });
+    }
+
+    function addProfile(copyCurrent) {
+      var p = { id: 'p_' + Date.now().toString(36), name: copyCurrent ? (activeProfile().name + ' (สำเนา)') : ('ชุดใหม่ ' + (list.length + 1)) };
+      p.actions = copyCurrent
+        ? JSON.parse(JSON.stringify(S.settings.actions || [])).map(function (a) { a.id = 'a_' + Math.random().toString(36).slice(2, 9); return a; })
+        : [];
+      list.push(p);
+      persistProfiles();
+    }
+
+    renderRows();
+    var body = el('div', {}, [
+      el('h2', { text: 'จัดการชุด Actions' }),
+      el('p', { class: 'muted small', text: 'แยกชุด Action ตามเกม/สถานการณ์ แล้วสลับได้จาก dropdown — เช่น "เกม A" กดปุ่มชุดหนึ่ง "คุยเฉยๆ" อีกชุดหนึ่ง' }),
+      host,
+      el('div', { class: 'profile-add-row' }, [
+        el('button', { class: 'btn btn-ghost btn-sm', text: '+ ชุดเปล่า', onclick: function () { addProfile(false); } }),
+        el('button', { class: 'btn btn-ghost btn-sm', text: '+ คัดลอกจากชุดปัจจุบัน', onclick: function () { addProfile(true); } })
+      ]),
+      el('div', { class: 'modal-foot' }, [
+        el('button', { class: 'btn btn-primary', text: 'เสร็จสิ้น', onclick: function () { m.close(); } })
+      ])
+    ]);
+    m = Tk.modal(body);
+  }
+
   // ---------- Actions ----------
   function persistActions() {
     invoke('settings:set', { patch: { actions: S.settings.actions } })
@@ -483,14 +607,51 @@
   }
 
   // ---------- Widgets ----------
+  // opts = ตัวเลือกในหน้าแต่งธีม (type: color | bool | number | select | text) — ใส่ลง URL เฉพาะค่าที่ต่างจาก def
   var WIDGETS = [
-    { file: 'alerts', icon: 'bell', name: 'Alert Box', desc: 'แจ้งเตือนของขวัญ/ติดตาม/สมาชิก กลางจอ', size: '500 x 300', params: '?gifts=1&follows=1&subs=1 (เปิด/ปิดแต่ละชนิด), ?sound=0 ปิดเสียง, ?debug=1 ปุ่มทดสอบ' },
-    { file: 'chat', icon: 'chat', name: 'Chat Overlay', desc: 'แชทสดพร้อม badge Mod/Sub/Follow', size: '380 x 600', params: '?avatars=0 ซ่อนรูป, ?hidecmd=1 ซ่อนคำสั่ง, ?size=16 ฟอนต์, ?fade=30 จางใน 30 วิ' },
-    { file: 'goal', icon: 'goals', name: 'Goal Bar', desc: 'หลอดเป้าหมาย หัวใจ/เพชร/ผู้ติดตาม', size: '460 x 260', params: '?goal=likes|diamonds|followers แสดงตัวเดียว' },
-    { file: 'leaderboard', icon: 'trophy', name: 'Leaderboard', desc: 'อันดับผู้ให้ของขวัญสูงสุด', size: '340 x 400', params: '?top=5 จำนวนอันดับ, ?title=0 ซ่อนหัวข้อ' },
-    { file: 'timer', icon: 'timer', name: 'Subathon Timer', desc: 'นาฬิกาถอยหลังบวกเวลาตามของขวัญ', size: '360 x 140', params: '?size=72 ขนาดตัวเลข' },
-    { file: 'tts', icon: 'tts', name: 'TTS Caption', desc: 'คำบรรยายข้อความที่กำลังอ่าน', size: '600 x 120', params: '?caption=0 ปิดคำบรรยาย' },
-    { file: 'wheel', icon: 'sparkles', name: 'Roulette สุ่มรางวัล', desc: 'แถบสุ่มรางวัลแนวนอน (สไตล์เปิดกล่อง) — ตั้งค่าในแท็บ "สุ่มรางวัล"', size: '900 x 260', params: '?idlehide=1 ซ่อนตอนไม่หมุน, ?card=120 ขนาดการ์ด, ?debug=1 ปุ่มทดสอบ' }
+    { file: 'alerts', icon: 'bell', name: 'Alert Box', desc: 'แจ้งเตือนของขวัญ/ติดตาม/สมาชิก กลางจอ', size: '500 x 300', params: '?gifts=1&follows=1&subs=1 (เปิด/ปิดแต่ละชนิด), ?sound=0 ปิดเสียง, ?debug=1 ปุ่มทดสอบ',
+      opts: [
+        { k: 'accent', label: 'สีหลัก', type: 'color', def: '#fe2c55' },
+        { k: 'gifts', label: 'แจ้งเตือนของขวัญ', type: 'bool', def: true },
+        { k: 'follows', label: 'แจ้งเตือนผู้ติดตาม', type: 'bool', def: true },
+        { k: 'subs', label: 'แจ้งเตือนสมาชิก', type: 'bool', def: true },
+        { k: 'shares', label: 'แจ้งเตือนแชร์', type: 'bool', def: false },
+        { k: 'sound', label: 'เปิดเสียง', type: 'bool', def: true }
+      ] },
+    { file: 'chat', icon: 'chat', name: 'Chat Overlay', desc: 'แชทสดพร้อม badge Mod/Sub/Follow', size: '380 x 600', params: '?avatars=0 ซ่อนรูป, ?hidecmd=1 ซ่อนคำสั่ง, ?size=16 ฟอนต์, ?fade=30 จางใน 30 วิ',
+      opts: [
+        { k: 'size', label: 'ขนาดฟอนต์ (px)', type: 'number', def: 16, min: 10, max: 40 },
+        { k: 'avatars', label: 'แสดงรูปโปรไฟล์', type: 'bool', def: true },
+        { k: 'hidecmd', label: 'ซ่อนข้อความคำสั่ง (!...)', type: 'bool', def: false, invert: true },
+        { k: 'fade', label: 'จางหายใน (วินาที, 0 = ไม่จาง)', type: 'number', def: 0, min: 0, max: 300 }
+      ] },
+    { file: 'goal', icon: 'goals', name: 'Goal Bar', desc: 'หลอดเป้าหมาย หัวใจ/เพชร/ผู้ติดตาม', size: '460 x 260', params: '?goal=likes|diamonds|followers แสดงตัวเดียว',
+      opts: [
+        { k: 'accent', label: 'สีหลอด', type: 'color', def: '#fe2c55' },
+        { k: 'goal', label: 'แสดงเป้าหมาย', type: 'select', def: '', options: [{ v: '', t: 'ทั้งหมดที่เปิดไว้' }, { v: 'likes', t: 'หัวใจ' }, { v: 'diamonds', t: 'เพชร' }, { v: 'followers', t: 'ผู้ติดตาม' }] }
+      ] },
+    { file: 'leaderboard', icon: 'trophy', name: 'Leaderboard', desc: 'อันดับผู้ให้ของขวัญสูงสุด', size: '340 x 400', params: '?top=5 จำนวนอันดับ, ?title=0 ซ่อนหัวข้อ',
+      opts: [
+        { k: 'accent', label: 'สีกรอบอันดับ 1', type: 'color', def: '#ffbe46' },
+        { k: 'top', label: 'จำนวนอันดับ', type: 'number', def: 5, min: 1, max: 20 },
+        { k: 'title', label: 'หัวข้อ (ใส่ 0 = ซ่อน)', type: 'text', def: '' }
+      ] },
+    { file: 'timer', icon: 'timer', name: 'Subathon Timer', desc: 'นาฬิกาถอยหลังบวกเวลาตามของขวัญ', size: '360 x 140', params: '?size=72 ขนาดตัวเลข',
+      opts: [
+        { k: 'accent', label: 'สีเวลาที่บวกเพิ่ม', type: 'color', def: '#25f4ee' },
+        { k: 'size', label: 'ขนาดตัวเลข (px)', type: 'number', def: 72, min: 24, max: 200 }
+      ] },
+    { file: 'tts', icon: 'tts', name: 'TTS Caption', desc: 'คำบรรยายข้อความที่กำลังอ่าน', size: '600 x 120', params: '?caption=0 ปิดคำบรรยาย',
+      opts: [
+        { k: 'accent', label: 'สีแถบข้าง', type: 'color', def: '#fe2c55' },
+        { k: 'caption', label: 'แสดงคำบรรยาย', type: 'bool', def: true }
+      ] },
+    { file: 'wheel', icon: 'sparkles', name: 'Roulette สุ่มรางวัล', desc: 'แถบสุ่มรางวัลแนวนอน (สไตล์เปิดกล่อง) — ตั้งค่าในแท็บ "สุ่มรางวัล"', size: '900 x 260', params: '?idlehide=1 ซ่อนตอนไม่หมุน, ?card=120 ขนาดการ์ด, ?debug=1 ปุ่มทดสอบ',
+      opts: [
+        { k: 'accent', label: 'สีเส้นชี้กลาง', type: 'color', def: '#fe2c55' },
+        { k: 'card', label: 'ขนาดการ์ด (px)', type: 'number', def: 120, min: 70, max: 220 },
+        { k: 'idlehide', label: 'ซ่อนตอนไม่ได้สุ่ม', type: 'bool', def: false, invert: true }
+      ] }
   ];
   function renderWidgets() {
     var list = $('#widgetsList');
@@ -509,6 +670,7 @@
         ]),
         el('div', { class: 'url-row' }, [
           urlInput,
+          w.opts ? el('button', { class: 'btn btn-sm', text: 'แต่งธีม', onclick: function () { openWidgetCustomizer(w); } }) : null,
           el('button', { class: 'btn btn-sm', text: 'คัดลอก', onclick: function () {
             navigator.clipboard.writeText(url).then(function () { toast('คัดลอก URL "' + w.name + '" แล้ว — วางใน OBS ได้เลย', 'ok'); });
           } }),
@@ -517,6 +679,84 @@
       ]);
       list.appendChild(row);
     });
+  }
+
+  // ---------- หน้าแต่งธีม widget: ปรับค่า → เห็นตัวอย่างสด → คัดลอก URL ที่ฝังค่าแล้ว ----------
+  function openWidgetCustomizer(w) {
+    var values = {};
+    (w.opts || []).forEach(function (o) { values[o.k] = o.def; });
+
+    function buildUrl() {
+      var qs = [];
+      (w.opts || []).forEach(function (o) {
+        var v = values[o.k];
+        if (o.type === 'bool') {
+          if (v !== o.def) qs.push(o.k + '=' + (o.def ? '0' : '1'));
+        } else if (o.type === 'color') {
+          if (v && v.toLowerCase() !== String(o.def).toLowerCase()) qs.push(o.k + '=' + String(v).replace('#', ''));
+        } else {
+          if (v !== '' && v != null && String(v) !== String(o.def)) qs.push(o.k + '=' + encodeURIComponent(v));
+        }
+      });
+      return 'http://localhost:' + S.serverPort + '/widgets/' + w.file + '.html' + (qs.length ? '?' + qs.join('&') : '');
+    }
+
+    var frame = el('iframe', { class: 'wc-preview', src: buildUrl() });
+    var urlInput = el('input', { type: 'text', readonly: 'readonly', value: buildUrl(), onclick: function () { urlInput.select(); } });
+    var reloadTimer = null;
+    function refresh() {
+      var u = buildUrl();
+      urlInput.value = u;
+      clearTimeout(reloadTimer);
+      reloadTimer = setTimeout(function () { frame.src = u; }, 350); // debounce ตอนลากสี
+    }
+
+    var form = el('div', { class: 'wc-form' });
+    (w.opts || []).forEach(function (o) {
+      var inp;
+      if (o.type === 'color') {
+        inp = el('input', { type: 'color', value: o.def });
+        inp.addEventListener('input', function () { values[o.k] = inp.value; refresh(); });
+      } else if (o.type === 'bool') {
+        inp = el('input', { type: 'checkbox' });
+        inp.checked = !!o.def;
+        inp.addEventListener('change', function () { values[o.k] = inp.checked; refresh(); });
+        form.appendChild(el('label', { class: 'switch-row' }, [el('span', { text: o.label }), inp]));
+        return;
+      } else if (o.type === 'select') {
+        inp = el('select', {}, o.options.map(function (x) {
+          return el('option', { value: x.v, text: x.t, selected: x.v === o.def ? 'selected' : null });
+        }));
+        inp.addEventListener('change', function () { values[o.k] = inp.value; refresh(); });
+      } else if (o.type === 'number') {
+        inp = el('input', { type: 'number', value: o.def, min: o.min != null ? String(o.min) : null, max: o.max != null ? String(o.max) : null });
+        inp.addEventListener('input', function () { values[o.k] = Number(inp.value) || o.def; refresh(); });
+      } else {
+        inp = el('input', { type: 'text', value: o.def, placeholder: 'ค่าเริ่มต้น' });
+        inp.addEventListener('input', function () { values[o.k] = inp.value; refresh(); });
+      }
+      form.appendChild(el('div', { class: 'field' }, [el('label', { text: o.label }), inp]));
+    });
+
+    var m;
+    var body = el('div', { class: 'wc-modal' }, [
+      el('h2', { text: 'แต่งธีม — ' + w.name }),
+      el('div', { class: 'wc-cols' }, [
+        form,
+        el('div', { class: 'wc-preview-wrap' }, [
+          frame,
+          el('div', { class: 'hint', text: 'ตัวอย่างสด — ขนาดแนะนำใน OBS: ' + w.size })
+        ])
+      ]),
+      el('div', { class: 'field' }, [el('label', { text: 'URL สำหรับวางใน OBS (ฝังค่าที่ปรับแล้ว)' }), urlInput]),
+      el('div', { class: 'modal-foot' }, [
+        el('button', { class: 'btn btn-ghost', text: 'ปิด', onclick: function () { m.close(); } }),
+        el('button', { class: 'btn btn-primary', text: 'คัดลอก URL', onclick: function () {
+          navigator.clipboard.writeText(urlInput.value).then(function () { toast('คัดลอกแล้ว — วางใน OBS ได้เลย', 'ok'); });
+        } })
+      ])
+    ]);
+    m = Tk.modal(body);
   }
 
   // ---------- TTS form ----------
@@ -703,7 +943,14 @@
       case 'timer': applyTimer(data); break;
       case 'connectionState': applyConnectionState(data); break;
       case 'connected': applyConnectionState({ status: 'connected', username: data.username, roomId: data.roomId }); toast('เชื่อมต่อ @' + data.username + ' แล้ว 🟢', 'ok'); break;
-      case 'disconnected': applyConnectionState({ status: 'disconnected', username: data.username }); break;
+      case 'disconnected':
+        applyConnectionState({ status: 'disconnected', username: data.username });
+        // หลุดโดยไม่ได้กดตัดเอง → เสียงเตือนดังๆ (ตั้งปิดได้ในแท็บตั้งค่า)
+        if (data && data.unexpected && S.settings && S.settings.disconnectAlarm !== false) {
+          playDisconnectAlarm();
+          toast('⚠️ หลุดจากไลฟ์! กำลังเชื่อมต่อใหม่...', 'err', 6000);
+        }
+        break;
       case 'streamEnd': toast('ไลฟ์จบแล้ว', 'warn'); break;
       case 'sound': playSound(data.url, data.volume); break;
       // 'tts' เล่นที่ main process (ttsPlayer) แล้ว — renderer ไม่ต้องทำอะไร
@@ -808,6 +1055,95 @@
     });
   }
   var WHEEL_COLORS = ['#fe2c55', '#25c1c9', '#f0c060', '#7b5bd6', '#3ecf8e', '#e0904a', '#5b93cc', '#e0685f'];
+
+  // ---------- ประวัติไลฟ์ (Session Report) ----------
+  function fmtDur(sec) {
+    sec = Number(sec) || 0;
+    var h = Math.floor(sec / 3600), mn = Math.floor((sec % 3600) / 60);
+    return h > 0 ? h + ' ชม. ' + mn + ' นาที' : mn + ' นาที';
+  }
+
+  async function renderSessions() {
+    var host = $('#sessionsList');
+    var list = [];
+    try { list = await invoke('sessions:list', {}, { toast: false }) || []; } catch (e) {}
+    host.innerHTML = '';
+    if (!list.length) {
+      host.appendChild(el('div', { class: 'empty-state', html:
+        'ยังไม่มีประวัติ<br><span class="empty-steps">เชื่อมต่อไลฟ์แล้วระบบจะบันทึกสถิติให้อัตโนมัติเมื่อจบไลฟ์</span>' }));
+      return;
+    }
+    list.forEach(function (s) {
+      var d = new Date(s.startedAt);
+      var dateStr = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) + ' ' +
+        d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+      var statsRow = el('div', { class: 'sess-stats' }, [
+        el('span', { text: '💎 ' + (s.totalDiamonds || 0).toLocaleString() }),
+        el('span', { text: '❤️ ' + (s.sessionLikes || 0).toLocaleString() }),
+        el('span', { text: '➕ ' + (s.follows || 0) + ' ติดตาม' }),
+        el('span', { text: '💬 ' + (s.totalChats || 0).toLocaleString() }),
+        el('span', { text: '👀 สูงสุด ' + (s.peakViewers || 0).toLocaleString() })
+      ]);
+      var detail = el('div', { class: 'sess-detail', hidden: 'hidden' });
+      var card = el('div', { class: 'action-card sess-card' }, [
+        el('div', { class: 'action-main' }, [
+          el('div', { class: 'action-name', text: dateStr + ' · @' + (s.username || '') + ' · ' + fmtDur(s.durationSec) }),
+          statsRow,
+          detail
+        ]),
+        el('div', { class: 'action-btns' }, [
+          el('button', { class: 'btn btn-danger btn-sm icon-btn', title: 'ลบประวัตินี้', onclick: async function (e) {
+            e.stopPropagation();
+            if (await Tk.confirmDialog('ลบประวัติไลฟ์วันที่ ' + dateStr + ' ?', 'ลบ')) {
+              await invoke('sessions:delete', { id: s.id });
+              renderSessions();
+            }
+          } }, [window.Icon.el('trash', 13)])
+        ])
+      ]);
+      // คลิกแถว → กางท็อปผู้ให้ของไลฟ์นั้น
+      card.addEventListener('click', function () {
+        if (!detail.hidden) { detail.hidden = true; return; }
+        detail.innerHTML = '';
+        var top = s.topGifters || [];
+        if (!top.length) {
+          detail.appendChild(el('div', { class: 'muted small', text: 'ไลฟ์นี้ไม่มีของขวัญ' }));
+        } else {
+          top.slice(0, 10).forEach(function (g, i) {
+            detail.appendChild(el('div', { class: 'sess-gifter' }, [
+              el('span', { class: 'rank', text: (i + 1) + '.' }),
+              el('span', { class: 'nm', text: g.nickname + ' (@' + g.uniqueId + ')' }),
+              el('span', { class: 'dm', text: '💎 ' + (g.diamonds || 0).toLocaleString() + ' · ' + (g.gifts || 0) + ' ชิ้น' })
+            ]));
+          });
+        }
+        detail.hidden = false;
+      });
+      host.appendChild(card);
+    });
+  }
+
+  // ---------- เสียงเตือนหลุดไลฟ์ (ไซเรนสั้นๆ 3 รอบ ดังพอได้ยินขณะเล่นเกม) ----------
+  var alarmCtx = null;
+  function playDisconnectAlarm() {
+    try {
+      alarmCtx = alarmCtx || new (window.AudioContext || window.webkitAudioContext)();
+      var c = alarmCtx;
+      for (var i = 0; i < 3; i++) {
+        var t0 = c.currentTime + i * 0.55;
+        var o = c.createOscillator();
+        var g = c.createGain();
+        o.type = 'square';
+        o.frequency.setValueAtTime(880, t0);
+        o.frequency.exponentialRampToValueAtTime(440, t0 + 0.4);
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.5, t0 + 0.03);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.45);
+        o.connect(g); g.connect(c.destination);
+        o.start(t0); o.stop(t0 + 0.5);
+      }
+    } catch (e) { /* ไม่มีเสียงก็ยังมี toast + notification */ }
+  }
 
   // ---------- Settings save helper ----------
   function saveSettings(patch, silent) {

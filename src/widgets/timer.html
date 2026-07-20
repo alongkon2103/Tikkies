@@ -67,7 +67,7 @@
     position: absolute;
     right: -6px; top: -4px;
     font-size: 18px; font-weight: 800;
-    color: #25f4ee;
+    color: var(--accent, #25f4ee);
     text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
     pointer-events: none;
     animation: floatUp 1.3s ease-out forwards;
@@ -78,6 +78,20 @@
     100% { opacity: 0; transform: translateY(-26px); }
   }
 </style>
+<script>
+/* ?accent=rrggbb — สีหลักของ widget (ตั้งจากหน้าแต่งธีมในแอป) */
+(function () {
+  var a = new URLSearchParams(location.search).get('accent');
+  if (!a || !/^[0-9a-f]{6}$/i.test(a)) return;
+  var n = parseInt(a, 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  var s = document.documentElement.style;
+  s.setProperty('--accent', '#' + a);
+  s.setProperty('--accent2', '#' + a);
+  s.setProperty('--accent-glow', 'rgba(' + r + ',' + g + ',' + b + ',0.55)');
+  s.setProperty('--accent-weak', 'rgba(' + r + ',' + g + ',' + b + ',0.22)');
+  s.setProperty('--accent-ring', 'rgba(' + r + ',' + g + ',' + b + ',0.7)');
+})();
+</script>
 </head>
 <body>
   <div id="box">

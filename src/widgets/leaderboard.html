@@ -85,14 +85,28 @@
   }
   /* อันดับ 1 เด่นกว่า + ขอบทอง */
   .row.top1 {
-    background: linear-gradient(90deg, rgba(255, 190, 70, 0.22), rgba(18, 18, 22, 0.6));
-    box-shadow: inset 0 0 0 1.5px rgba(255, 200, 90, 0.7);
+    background: linear-gradient(90deg, var(--accent-weak, rgba(255, 190, 70, 0.22)), rgba(18, 18, 22, 0.6));
+    box-shadow: inset 0 0 0 1.5px var(--accent-ring, rgba(255, 200, 90, 0.7));
     padding: 11px 12px;
   }
   .row.top1 .avatar { width: 44px; height: 44px; }
   .row.top1 .name { font-size: 16px; }
   .empty { opacity: 0.6; font-size: 14px; padding: 8px 4px; }
 </style>
+<script>
+/* ?accent=rrggbb — สีหลักของ widget (ตั้งจากหน้าแต่งธีมในแอป) */
+(function () {
+  var a = new URLSearchParams(location.search).get('accent');
+  if (!a || !/^[0-9a-f]{6}$/i.test(a)) return;
+  var n = parseInt(a, 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  var s = document.documentElement.style;
+  s.setProperty('--accent', '#' + a);
+  s.setProperty('--accent2', '#' + a);
+  s.setProperty('--accent-glow', 'rgba(' + r + ',' + g + ',' + b + ',0.55)');
+  s.setProperty('--accent-weak', 'rgba(' + r + ',' + g + ',' + b + ',0.22)');
+  s.setProperty('--accent-ring', 'rgba(' + r + ',' + g + ',' + b + ',0.7)');
+})();
+</script>
 </head>
 <body>
   <div id="board">

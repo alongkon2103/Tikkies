@@ -244,6 +244,10 @@
     var minLocked = params.get('mindiamonds') != null;
     var durLocked = false;
     var defaults = { durationSec: 6, minDiamonds: 0, accent: '#fe2c55', accent2: '#25f4ee' };
+    // ?accent=rrggbb ล็อกสีหลักจาก URL (หน้าแต่งธีมในแอปใช้) — snapshot จะไม่ทับ
+    var accentLocked = false;
+    var pAccent = params.get('accent');
+    if (pAccent && /^[0-9a-f]{6}$/i.test(pAccent)) { defaults.accent = '#' + pAccent; accentLocked = true; }
     if (minLocked) {
       var mp = Number(params.get('mindiamonds'));
       defaults.minDiamonds = isFinite(mp) && mp > 0 ? mp : 0;
@@ -548,7 +552,7 @@
           if (!durLocked && isFinite(d) && d > 0) defaults.durationSec = d;
           var m = Number(ov.alertMinDiamonds);
           if (!minLocked && isFinite(m) && m >= 0) defaults.minDiamonds = m;
-          if (ov.accentColor && HEX.test(ov.accentColor)) defaults.accent = ov.accentColor;
+          if (!accentLocked && ov.accentColor && HEX.test(ov.accentColor)) defaults.accent = ov.accentColor;
           return;
         }
         if (event === 'alert') {

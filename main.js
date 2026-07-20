@@ -16,6 +16,7 @@ const obs = require('./src/core/obs');
 const giftCatalog = require('./src/core/giftCatalog');
 const wheel = require('./src/core/wheel');
 const hotkeys = require('./src/core/hotkeys');
+const sessionLog = require('./src/core/sessionLog');
 
 let win = null;
 
@@ -149,6 +150,21 @@ const handlers = {
 
   'wheel:spin': () => wheel.spin('test'),
 
+  // ประวัติไลฟ์ (session report)
+  'sessions:list': () => sessionLog.list(),
+  'sessions:delete': ({ id }) => sessionLog.remove(id),
+  'sessions:exportCsv': async ({ kind }) => {
+    const isGifters = kind === 'gifters';
+    const res = await dialog.showSaveDialog(win, {
+      title: isGifters ? 'ส่งออกผู้สนับสนุน (CSV)' : 'ส่งออกประวัติไลฟ์ (CSV)',
+      defaultPath: isGifters ? 'tikkies-supporters.csv' : 'tikkies-sessions.csv',
+      filters: [{ name: 'CSV', extensions: ['csv'] }]
+    });
+    if (res.canceled || !res.filePath) return { ok: false, canceled: true };
+    fs.writeFileSync(res.filePath, isGifters ? sessionLog.giftersCsv() : sessionLog.sessionsCsv(), 'utf8');
+    return { ok: true, path: res.filePath };
+  },
+
   // อัพโหลดไฟล์สื่อเข้าคลังแอป (copy เข้า userData/media) → คืน URL /media/... ใช้ใน widget ได้เลย
   'media:import': async ({ filters }) => {
     const res = await dialog.showOpenDialog(win, {
@@ -189,6 +205,7 @@ app.whenReady().then(async () => {
   settings.load();
   stats.init();
   actions.init();
+  sessionLog.init();
   tts.init();
   ttsPlayer.init();
   obs.init();
@@ -213,6 +230,15 @@ app.whenReady().then(async () => {
     });
   }
 
+  // หลุดจากไลฟ์โดยไม่ได้ตั้งใจ → แจ้งเตือนระบบ (เห็นแม้เล่นเกมเต็มจอ); เสียงดังเล่นที่ Dashboard
+  bus.on('disconnected', (d) => {
+    if (!d || !d.unexpected || !settings.get().disconnectAlarm) return;
+    try {
+      const { Notification } = require('electron');
+      new Notification({ title: 'Tikkies Tools', body: '⚠️ หลุดจากไลฟ์! กำลังพยายามเชื่อมต่อใหม่...', urgency: 'critical' }).show();
+    } catch (_) { /* ระบบไม่รองรับ notification — เสียงจาก Dashboard ยังทำงาน */ }
+  });
+
   createWindow();
   setupAutoUpdate();
   hotkeys.init(); // globalShortcut ใช้ได้หลัง app ready เท่านั้น
@@ -227,7 +253,10 @@ app.whenReady().then(async () => {
   });
 });
 
-app.on('will-quit', () => hotkeys.dispose());
+app.on('will-quit', () => {
+  hotkeys.dispose();
+  sessionLog.finalize(); // ปิดยอด session ค้างก่อนออกจากแอป
+});
 
 app.on('window-all-closed', () => {
   // ปิดหน้าต่างแล้วปิดแอปเลย (รวมถึง macOS เพราะเซิร์ฟเวอร์/การเชื่อมต่อทำงานเบื้องหลัง)
