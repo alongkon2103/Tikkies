@@ -32,14 +32,21 @@
       ['timer', { running: true, remainingSec: 5025, totalAddedSec: 340, label: 'Subathon Timer', enabled: true }],
       ['roomStats', { viewerCount: 156, topViewers: [] }]
     ];
+    // จัดลำดับให้ "event ที่ทำให้ Alert Box มีการ์ด" (gift/follow/subscribe/share) มาถี่ๆ
+    // สลับกับแชท — การ์ด alert แสดงใบละ ~6 วิ พอยิงทุก ~2.5 วิ กรอบ preview จะมีของโชว์เกือบตลอด
+    var gRose = { nickname: 'สายเปย์ตัวจริง', uniqueId: 'vip1', profilePictureUrl: AV, giftName: 'Rose', giftPictureUrl: '', repeatCount: 3, diamondCount: 1, diamondTotal: 3, repeatEnd: true, streakable: true };
+    var gGalaxy = { nickname: 'NoBoss', uniqueId: 'vip2', profilePictureUrl: AV, giftName: 'Galaxy', giftPictureUrl: '', repeatCount: 1, diamondCount: 1000, diamondTotal: 1000, repeatEnd: true, streakable: false };
     var loop = [
+      ['gift', gRose],
       ['chat', { nickname: 'สมชายใจดี', uniqueId: 'user_somchai', profilePictureUrl: AV, comment: 'สวัสดีครับ ทดสอบธีมอยู่ 🎉', followRole: 1, isModerator: false, isSubscriber: false }],
-      ['gift', { nickname: 'สายเปย์ตัวจริง', uniqueId: 'vip1', profilePictureUrl: AV, giftName: 'Rose', giftPictureUrl: '', repeatCount: 3, diamondCount: 1, diamondTotal: 3, repeatEnd: true, streakable: true }],
-      ['tts', { id: 'p1', text: 'ขอบคุณสมชายใจดีสำหรับกุหลาบครับ' }],
-      ['chat', { nickname: 'แฟนคลับ', uniqueId: 'fan01', profilePictureUrl: AV, comment: 'สีสวยมากก 😍', followRole: 0, isModerator: false, isSubscriber: false }],
       ['follow', { nickname: 'แฟนคลับ', uniqueId: 'fan01', profilePictureUrl: AV }],
-      ['gift', { nickname: 'NoBoss', uniqueId: 'vip2', profilePictureUrl: AV, giftName: 'Galaxy', giftPictureUrl: '', repeatCount: 1, diamondCount: 1000, diamondTotal: 1000, repeatEnd: true, streakable: false }],
-      ['like', { nickname: 'ผู้ชม', uniqueId: 'viewer1', likeCount: 15, totalLikeCount: 683 }]
+      ['gift', gGalaxy],
+      ['chat', { nickname: 'แฟนคลับ', uniqueId: 'fan01', profilePictureUrl: AV, comment: 'สีสวยมากก 😍', followRole: 0, isModerator: false, isSubscriber: false }],
+      ['tts', { id: 'p1', text: 'ขอบคุณสมชายใจดีสำหรับกุหลาบครับ' }],
+      ['subscribe', { nickname: 'สมาชิกใหม่', uniqueId: 'sub01', profilePictureUrl: AV, subMonth: 1 }],
+      ['like', { nickname: 'ผู้ชม', uniqueId: 'viewer1', likeCount: 15, totalLikeCount: 683 }],
+      ['chat', { nickname: 'เกมเมอร์', uniqueId: 'gamer1', profilePictureUrl: AV, comment: 'สู้ๆ นะครับ 🔥', followRole: 2, isModerator: true, isSubscriber: false }],
+      ['share', { nickname: 'ผู้ชม', uniqueId: 'viewer2', profilePictureUrl: AV }]
     ];
     var wheelSample = ['wheelSpin', {
       spinId: 'pv', winnerIndex: 1, label: 'รางวัลใหญ่!', durationSec: 5, resultHoldSec: 3,
@@ -48,11 +55,12 @@
     function fire(ev) { try { onEvent(ev[0], JSON.parse(JSON.stringify(ev[1]))); } catch (_) {} }
     setTimeout(function () {
       seedEvents.forEach(fire);
-      var i = 0;
-      setInterval(function () { fire(loop[i % loop.length]); i += 1; }, 3200);
+      fire(['gift', gRose]);   // ยิงของขวัญทันที — กรอบ preview ไม่ว่างตั้งแต่แรก
       fire(wheelSample);
+      var i = 0;
+      setInterval(function () { fire(loop[i % loop.length]); i += 1; }, 2500);
       setInterval(function () { fire(wheelSample); }, 12000);
-    }, 600);
+    }, 500);
   }
 
   function connect(handlers) {

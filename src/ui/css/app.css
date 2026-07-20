@@ -558,16 +558,20 @@ textarea { resize: vertical; }
 }
 :root[data-theme="light"] #modalHost.has-iframe { background: #0f172a; }
 #modalHost.has-iframe .modal { width: 880px; background: var(--card); isolation: isolate; }
-.wc-cols { display: grid; grid-template-columns: 220px 1fr; gap: 14px; margin-bottom: 10px; }
-.wc-form { min-width: 0; }
-.wc-preview-wrap { min-width: 0; }
+.wc-cols { display: grid; grid-template-columns: 230px 1fr; gap: 16px; margin-bottom: 12px; align-items: stretch; }
+.wc-form { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.wc-form .field { margin-bottom: 6px; }
+.wc-preview-wrap { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+/* กรอบ preview ยืดสูงเท่าคอลัมน์ฟอร์ม (min 300) — ฟอร์มยาวแค่ไหน preview ก็สูงตาม ไม่ล้น */
 .wc-preview {
-  width: 100%; height: 300px; border: 1px dashed var(--line-strong); border-radius: 9px;
+  width: 100%; flex: 1 1 auto; min-height: 300px;
+  border: 1px dashed var(--line-strong); border-radius: 9px;
   background:
     linear-gradient(45deg, rgba(127,127,127,0.13) 25%, transparent 25%, transparent 75%, rgba(127,127,127,0.13) 75%),
     linear-gradient(45deg, rgba(127,127,127,0.13) 25%, transparent 25%, transparent 75%, rgba(127,127,127,0.13) 75%);
   background-size: 18px 18px; background-position: 0 0, 9px 9px; /* ลายหมากรุก = โปร่งใส */
 }
+.wc-preview-wrap .hint { text-align: center; }
 
 /* ===== ประวัติไลฟ์ ===== */
 .sess-card { cursor: pointer; align-items: flex-start; }
