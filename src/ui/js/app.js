@@ -36,6 +36,7 @@
       renderTemplates();
       renderActions();
       renderWidgets();
+      bindWheelTab();
       bindSettingsForms();
       applyObsStatus(st.obs || {});
       $('#versionLabel').textContent = 'v' + S.version;
@@ -399,10 +400,12 @@
       case 'share': return 'เมื่อมีคนแชร์';
       case 'subscribe': return 'เมื่อมีสมาชิกใหม่';
       case 'member': return 'เมื่อมีคนเข้าห้อง';
+      case 'hotkey': return 'เมื่อกดคีย์ ' + (t.accelerator || '(ยังไม่ตั้ง)');
+      case 'wheelResult': return t.prize ? ('เมื่อสุ่มได้ "' + t.prize + '"') : 'เมื่อสุ่มรางวัลออก (ทุกช่อง)';
       default: return t.type || '';
     }
   }
-  var RESP_ICON = { alert: 'bell', tts: 'tts', sound: 'music', keypress: 'keyboard', obs: 'video', webhook: 'webhook' };
+  var RESP_ICON = { alert: 'bell', tts: 'tts', sound: 'music', keypress: 'keyboard', obs: 'video', webhook: 'webhook', wheel: 'sparkles' };
 
   function renderActions() {
     var list = $('#actionsList');
@@ -437,9 +440,30 @@
           sum
         ]),
         el('div', { class: 'action-btns' }, [
-          el('button', { class: 'btn btn-ghost btn-sm', text: 'ทดสอบ', onclick: function () {
-            invoke('actions:test', { id: a.id }).then(function () { toast('ทดสอบ "' + (a.name || '') + '" แล้ว', 'ok'); });
-          } }),
+          (function () {
+            // ปุ่มทดสอบ: นับถอยหลัง 5 วิ ก่อนรันจริง — ให้มีเวลาสลับไปหน้าเกม/แอปเป้าหมาย
+            // (จำเป็นกับ keypress ที่ส่งปุ่มไปหน้าต่างที่โฟกัสอยู่) · กดซ้ำระหว่างนับ = ยกเลิก
+            var testBtn = el('button', { class: 'btn btn-ghost btn-sm', text: 'ทดสอบ' });
+            var countdown = null, left = 0;
+            function resetBtn() {
+              clearInterval(countdown); countdown = null;
+              testBtn.textContent = 'ทดสอบ';
+              testBtn.classList.remove('counting');
+            }
+            testBtn.addEventListener('click', function () {
+              if (countdown) { resetBtn(); toast('ยกเลิกการทดสอบ', ''); return; }
+              left = 5;
+              testBtn.textContent = 'รันใน ' + left + '...';
+              testBtn.classList.add('counting');
+              countdown = setInterval(function () {
+                left -= 1;
+                if (left > 0) { testBtn.textContent = 'รันใน ' + left + '...'; return; }
+                resetBtn();
+                invoke('actions:test', { id: a.id }).then(function () { toast('ทดสอบ "' + (a.name || '') + '" แล้ว', 'ok'); });
+              }, 1000);
+            });
+            return testBtn;
+          })(),
           el('button', { class: 'btn btn-ghost btn-sm', text: 'แก้ไข', onclick: function () {
             window.ActionsEditor.open(a, function (updated) {
               S.settings.actions[idx] = updated;
@@ -465,7 +489,8 @@
     { file: 'goal', icon: 'goals', name: 'Goal Bar', desc: 'หลอดเป้าหมาย หัวใจ/เพชร/ผู้ติดตาม', size: '460 x 260', params: '?goal=likes|diamonds|followers แสดงตัวเดียว' },
     { file: 'leaderboard', icon: 'trophy', name: 'Leaderboard', desc: 'อันดับผู้ให้ของขวัญสูงสุด', size: '340 x 400', params: '?top=5 จำนวนอันดับ, ?title=0 ซ่อนหัวข้อ' },
     { file: 'timer', icon: 'timer', name: 'Subathon Timer', desc: 'นาฬิกาถอยหลังบวกเวลาตามของขวัญ', size: '360 x 140', params: '?size=72 ขนาดตัวเลข' },
-    { file: 'tts', icon: 'tts', name: 'TTS Caption', desc: 'คำบรรยายข้อความที่กำลังอ่าน', size: '600 x 120', params: '?caption=0 ปิดคำบรรยาย' }
+    { file: 'tts', icon: 'tts', name: 'TTS Caption', desc: 'คำบรรยายข้อความที่กำลังอ่าน', size: '600 x 120', params: '?caption=0 ปิดคำบรรยาย' },
+    { file: 'wheel', icon: 'sparkles', name: 'Roulette สุ่มรางวัล', desc: 'แถบสุ่มรางวัลแนวนอน (สไตล์เปิดกล่อง) — ตั้งค่าในแท็บ "สุ่มรางวัล"', size: '900 x 260', params: '?idlehide=1 ซ่อนตอนไม่หมุน, ?card=120 ขนาดการ์ด, ?debug=1 ปุ่มทดสอบ' }
   ];
   function renderWidgets() {
     var list = $('#widgetsList');
@@ -687,6 +712,102 @@
       case 'log': logStatus(data); if (data.level === 'error') toast(data.msg, 'err', 4000); break;
     }
   }
+
+  // ---------- กงล้อเสี่ยงโชค ----------
+  function bindWheelTab() {
+    var w = (S.settings && S.settings.wheel) || {};
+
+    // ฟิลด์ทั่วไป — bind ผ่าน [data-wheel]
+    $$('[data-wheel]').forEach(function (inp) {
+      var key = inp.dataset.wheel;
+      if (inp.type === 'checkbox') {
+        inp.checked = w[key] !== false;
+        inp.addEventListener('change', function () { saveWheel(key, inp.checked); });
+      } else {
+        inp.value = w[key] != null ? w[key] : '';
+        inp.addEventListener('change', function () {
+          saveWheel(key, inp.type === 'number' ? (Number(inp.value) || 0) : inp.value);
+        });
+      }
+    });
+
+    function saveWheel(key, val) {
+      var patch = {}; patch[key] = val;
+      S.settings.wheel = Object.assign({}, S.settings.wheel, patch);
+      saveSettings({ wheel: S.settings.wheel }, true);
+    }
+
+    renderWheelSegments();
+    $('#addSegmentBtn').addEventListener('click', function () {
+      S.settings.wheel.segments = S.settings.wheel.segments || [];
+      S.settings.wheel.segments.push({ label: '', weight: 1 });
+      renderWheelSegments();
+      // โฟกัสช่องใหม่ทันที
+      var inputs = $$('#wheelSegments .seg-label');
+      if (inputs.length) inputs[inputs.length - 1].focus();
+    });
+    $('#wheelSpinBtn').addEventListener('click', function () {
+      invoke('wheel:spin').then(function (r) {
+        if (r && r.busy) { toast('กำลังสุ่มอยู่ รอให้จบก่อน', ''); return; }
+        if (r && r.ok) toast('สุ่มแล้ว! ดูผลบน widget Roulette', 'ok');
+      });
+    });
+  }
+
+  function persistWheelSegments() {
+    saveSettings({ wheel: S.settings.wheel }, true);
+  }
+
+  function renderWheelSegments() {
+    var host = $('#wheelSegments');
+    var segs = (S.settings.wheel && S.settings.wheel.segments) || [];
+    host.innerHTML = '';
+    if (!segs.length) {
+      host.appendChild(el('div', { class: 'resp-empty', text: 'ยังไม่มีช่องรางวัล — กดเพิ่มด้านล่าง (ต้องมีอย่างน้อย 2 ช่อง)' }));
+    }
+    segs.forEach(function (seg, idx) {
+      var labelInp = el('input', { type: 'text', class: 'seg-label', value: seg.label || '', placeholder: 'ชื่อรางวัล เช่น ร้องเพลง 1 เพลง' });
+      labelInp.addEventListener('change', function () { seg.label = labelInp.value; persistWheelSegments(); });
+      var weightInp = el('input', { type: 'number', class: 'seg-weight', min: '1', value: seg.weight || 1, title: 'น้ำหนักโอกาสออก' });
+      weightInp.addEventListener('change', function () { seg.weight = Number(weightInp.value) || 1; persistWheelSegments(); });
+      // สีของช่อง — default ตาม palette; ผู้ใช้เปลี่ยนเองได้
+      var colorInp = el('input', { type: 'color', class: 'seg-color', value: seg.color || WHEEL_COLORS[idx % WHEEL_COLORS.length], title: 'สีของช่องนี้บน widget' });
+      colorInp.addEventListener('change', function () { seg.color = colorInp.value; persistWheelSegments(); });
+      // รูปของช่อง — อัพโหลดเข้าคลังแอป (/media) แล้วโชว์บนการ์ดแทนตัวอักษร
+      var imgBtn;
+      function imgBtnContent() {
+        imgBtn.innerHTML = '';
+        if (seg.image) {
+          imgBtn.appendChild(el('img', { class: 'seg-thumb', src: 'http://localhost:' + S.serverPort + seg.image, alt: '' }));
+          imgBtn.title = 'คลิกเพื่อเปลี่ยนรูป · คลิกขวาเพื่อลบรูป';
+        } else {
+          imgBtn.appendChild(window.Icon.el('upload', 13));
+          imgBtn.title = 'อัพโหลดรูปของช่องนี้ (โชว์บนการ์ดแทนตัวอักษร)';
+        }
+      }
+      imgBtn = el('button', { class: 'btn btn-ghost btn-sm icon-btn seg-img-btn', onclick: async function () {
+        var url = await invoke('media:import', {});
+        if (url) { seg.image = url; imgBtnContent(); persistWheelSegments(); }
+      } });
+      imgBtn.addEventListener('contextmenu', function (e) {
+        e.preventDefault();
+        if (seg.image) { delete seg.image; imgBtnContent(); persistWheelSegments(); }
+      });
+      imgBtnContent();
+      host.appendChild(el('div', { class: 'seg-row' }, [
+        colorInp,
+        imgBtn,
+        labelInp,
+        weightInp,
+        el('button', { class: 'btn btn-danger btn-sm icon-btn', title: 'ลบช่องนี้', onclick: function () {
+          segs.splice(idx, 1);
+          persistWheelSegments();
+          renderWheelSegments();
+        } }, [window.Icon.el('trash', 13)])
+      ]));
+    });
+  }
+  var WHEEL_COLORS = ['#fe2c55', '#25c1c9', '#f0c060', '#7b5bd6', '#3ecf8e', '#e0904a', '#5b93cc', '#e0685f'];
 
   // ---------- Settings save helper ----------
   function saveSettings(patch, silent) {

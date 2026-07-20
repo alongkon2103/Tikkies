@@ -5,10 +5,11 @@ const bus = require('./eventBus');
 const settings = require('./settings');
 
 // event ที่ engine นี้ฟังเพื่อ match trigger
-const TRIGGER_EVENTS = ['chat', 'gift', 'like', 'follow', 'share', 'subscribe', 'member'];
+// ('hotkey' ไม่อยู่ในนี้ — คีย์ลัดถูก register/ยิงโดย src/core/hotkeys.js โดยตรง)
+const TRIGGER_EVENTS = ['chat', 'gift', 'like', 'follow', 'share', 'subscribe', 'member', 'wheelResult'];
 
 // placeholder ที่อนุญาตใน template (ตาม CONTRACT.md)
-const TEMPLATE_RE = /\{(nickname|uniqueId|comment|giftName|repeatCount|diamondCount|diamondTotal|likeCount|totalLikes)\}/g;
+const TEMPLATE_RE = /\{(nickname|uniqueId|comment|giftName|repeatCount|diamondCount|diamondTotal|likeCount|totalLikes|prize)\}/g;
 
 let initialized = false;
 
@@ -50,6 +51,12 @@ function matchTrigger(trigger, eventType, data) {
       const keyword = (trigger.keyword || '').trim();
       if (!keyword) return true; // ว่าง = ทุกข้อความ
       return String(data.comment || '').toLowerCase().includes(keyword.toLowerCase());
+    }
+    case 'wheelResult': {
+      // สุ่มรางวัลออก — trigger.prize ว่าง = รางวัลอะไรก็ได้, ไม่งั้นต้องตรงชื่อ
+      const want = (trigger.prize || '').trim();
+      if (!want) return true;
+      return String(data.prize || '').trim().toLowerCase() === want.toLowerCase();
     }
     case 'follow':
     case 'share':
@@ -104,6 +111,10 @@ async function run(action, eventData) {
           } else {
             throw new Error('ไม่รู้จักคำสั่ง OBS: ' + r.obsAction);
           }
+          break;
+        }
+        case 'wheel': {
+          require('./wheel').spin('action:' + (action.name || action.id));
           break;
         }
         case 'webhook': {
@@ -244,7 +255,8 @@ async function test(id) {
     diamondTotal: 3,
     likeCount: 1000,
     totalLikeCount: 1000,
-    totalLikes: 1000
+    totalLikes: 1000,
+    prize: 'รางวัลทดสอบ'
   };
   bus.emit('action', { actionId: action.id, name: action.name, triggeredBy: 'test' });
   await run(action, sample);

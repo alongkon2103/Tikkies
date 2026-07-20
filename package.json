@@ -1,7 +1,7 @@
 {
   "name": "tikkies-tools",
   "productName": "Tikkies Tools",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "เครื่องมือสำหรับสตรีมเมอร์ TikTok LIVE — Alerts, TTS, Actions, Overlays (แนว TikFinity)",
   "main": "main.js",
   "author": "alongkon2103",

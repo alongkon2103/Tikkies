@@ -18,7 +18,8 @@ const giftCatalog = require('./giftCatalog');
 const BROADCAST_EVENTS = [
   'chat', 'gift', 'like', 'follow', 'share', 'subscribe', 'member',
   'roomStats', 'connected', 'disconnected', 'streamEnd', 'connectionState',
-  'alert', 'tts', 'goals', 'leaderboard', 'stats', 'timer', 'action'
+  'alert', 'tts', 'goals', 'leaderboard', 'stats', 'timer', 'action',
+  'wheelSpin', 'wheelResult'
 ];
 
 let server = null;
@@ -74,6 +75,8 @@ async function start(port) {
 
     app.use('/widgets', express.static(path.join(__dirname, '..', 'widgets')));
     app.use('/assets', express.static(path.join(__dirname, '..', '..', 'assets')));
+    // ไฟล์สื่อที่ผู้ใช้อัพโหลด (รูปช่องรางวัล ฯลฯ) — ดู src/core/media.js
+    app.use('/media', express.static(require('./media').mediaDir()));
 
     app.get('/api/state', (_req, res) => res.json(snapshot()));
 

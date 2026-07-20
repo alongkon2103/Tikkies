@@ -48,6 +48,21 @@ const DEFAULTS = {
     label: 'Subathon Timer'
   },
   obs: { enabled: false, url: 'ws://127.0.0.1:4455', password: '' },
+  wheel: {
+    title: 'สุ่มรางวัล',
+    durationSec: 8,       // เวลาหมุนก่อนหยุด
+    announceTts: true,    // อ่านผลรางวัลด้วยเสียง
+    resultHoldSec: 6,     // แสดงผลค้างไว้กี่วินาที
+    segments: [
+      // weight = น้ำหนักโอกาสออก (มากออกง่าย)
+      { label: 'ร้องเพลง 1 เพลง', weight: 3 },
+      { label: 'เต้น 10 วินาที', weight: 3 },
+      { label: 'เล่าเรื่องตลก', weight: 3 },
+      { label: 'ทำหน้าตลก', weight: 3 },
+      { label: 'รางวัลใหญ่!', weight: 1 },
+      { label: 'หมุนอีกครั้ง', weight: 2 }
+    ]
+  },
   overlay: {
     theme: 'dark',
     accentColor: '#fe2c55',
@@ -118,7 +133,7 @@ function set(patch) {
 // ค่าที่ปลอดภัยพอจะส่งให้ widget ฝั่งเบราว์เซอร์
 function publicSettings() {
   const s = get();
-  return { tts: s.tts, goals: s.goals, timer: s.timer, overlay: s.overlay, language: s.language };
+  return { tts: s.tts, goals: s.goals, timer: s.timer, overlay: s.overlay, wheel: s.wheel, language: s.language };
 }
 
 module.exports = { load, get, set, save, publicSettings, DEFAULTS };

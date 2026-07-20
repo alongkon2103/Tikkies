@@ -1,0 +1,314 @@
+<!--
+  Tikkies Tools — Roulette Widget (สุ่มรางวัลแนวนอน สไตล์เปิดกล่อง สำหรับ OBS Browser Source)
+
+  วิธีใช้:
+    เพิ่ม http://localhost:21213/widgets/wheel.html เป็น Browser Source ใน OBS
+    (พื้นหลังโปร่งใส แนะนำขนาด 900 x 260)
+
+  พารามิเตอร์ (ต่อท้าย URL):
+    ?idlehide=1      ซ่อนตอนไม่หมุน (โผล่เฉพาะตอนหมุน + แสดงผล)
+    ?card=120        ความกว้างการ์ด (px)
+    ?debug=1         ปุ่มหมุนทดสอบ
+    ?host= / ?port=  กรณีเปิดจากเครื่อง/พอร์ตอื่น
+
+  ข้อมูล: ช่องรางวัล (label + color) จาก snapshot.settings.wheel; ฟัง 'wheelSpin' → เลื่อนแถบไปหยุด
+  ที่ผู้ชนะตรงกลาง (main เป็นคนสุ่มผล — ทุก overlay เห็นตรงกัน)
+-->
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tikkies — Roulette</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: transparent; width: 100%; height: 100%; overflow: hidden;
+    font-family: 'Prompt', -apple-system, 'Helvetica Neue', 'Thonburi', sans-serif;
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+  }
+  /* padding-bottom เผื่อพื้นที่ป้ายผลที่ยื่นใต้กรอบ (จะได้ไม่โดนตัด) */
+  #stage { width: 100%; max-width: 980px; padding: 0 10px 34px; transition: opacity 0.4s; }
+  #frameWrap { position: relative; }
+  #stage.hidden { opacity: 0; }
+  #title {
+    text-align: center; font-size: 15px; font-weight: 700; letter-spacing: 6px;
+    text-transform: uppercase; color: #c9a6ff; margin-bottom: 12px;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.6);
+  }
+  /* ---- แถบ roulette ---- */
+  #frame {
+    position: relative; border-radius: 16px; overflow: hidden;
+    background: rgba(16, 12, 28, 0.72);
+    border: 1px dashed rgba(120, 100, 220, 0.55);
+    padding: 26px 0;
+  }
+  #viewport { position: relative; overflow: hidden; }
+  #strip {
+    display: flex; gap: 14px; will-change: transform;
+    padding: 4px 0;
+  }
+  .cardItem {
+    flex: 0 0 auto;
+    width: var(--card-w, 120px); height: calc(var(--card-w, 120px) * 1.25);
+    border-radius: 12px;
+    background: rgba(28, 22, 46, 0.92);
+    border: 1.5px solid var(--c, #5b93cc);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  }
+  .cardItem .big {
+    font-size: calc(var(--card-w, 120px) * 0.38); font-weight: 800; line-height: 1;
+    color: var(--c, #5b93cc);
+    text-shadow: 0 0 18px var(--c-glow, rgba(91,147,204,0.6));
+  }
+  .cardItem img.pic {
+    width: calc(var(--card-w, 120px) * 0.52); height: calc(var(--card-w, 120px) * 0.52);
+    object-fit: contain;
+    filter: drop-shadow(0 0 12px var(--c-glow, rgba(91,147,204,0.5)));
+  }
+  .cardItem .lbl {
+    font-size: calc(var(--card-w, 120px) * 0.11); font-weight: 650; text-align: center;
+    padding: 0 8px; line-height: 1.3; max-height: 2.7em; overflow: hidden;
+    color: #e8e4f5;
+  }
+  .cardItem.win {
+    border-width: 2.5px;
+    box-shadow: 0 0 0 3px var(--c-ring, rgba(91,147,204,0.35)), 0 0 34px var(--c-glow, rgba(91,147,204,0.55));
+    animation: winPulse 1s ease infinite alternate;
+  }
+  @keyframes winPulse { to { transform: scale(1.04); } }
+  /* fade ขอบซ้ายขวา */
+  #viewport::before, #viewport::after {
+    content: ''; position: absolute; top: 0; bottom: 0; width: 110px; z-index: 3; pointer-events: none;
+  }
+  #viewport::before { left: 0; background: linear-gradient(90deg, rgba(16,12,28,0.95), transparent); }
+  #viewport::after { right: 0; background: linear-gradient(-90deg, rgba(16,12,28,0.95), transparent); }
+  /* เส้นชี้กลาง */
+  #marker {
+    position: absolute; top: 6px; bottom: 6px; left: 50%; width: 3px; z-index: 4;
+    transform: translateX(-50%);
+    background: linear-gradient(180deg, #fe2c55, rgba(254,44,85,0.25));
+    border-radius: 2px;
+    box-shadow: 0 0 12px rgba(254,44,85,0.8);
+  }
+  #marker::before, #marker::after {
+    content: ''; position: absolute; left: 50%; transform: translateX(-50%);
+    border-left: 9px solid transparent; border-right: 9px solid transparent;
+  }
+  #marker::before { top: -8px; border-top: 10px solid #fe2c55; }
+  #marker::after { bottom: -8px; border-bottom: 10px solid #fe2c55; }
+  /* ---- ป้ายผล — ลูกของ #frameWrap (นอก #frame ที่ overflow:hidden) จะได้ไม่โดนตัด ---- */
+  #result {
+    position: absolute; left: 50%; bottom: 0; transform: translate(-50%, 55%);
+    z-index: 6; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+  }
+  #result.show { opacity: 1; }
+  #result .pill {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(18, 13, 32, 0.96);
+    border: 1.5px solid var(--rc, #c9a6ff); border-radius: 12px;
+    padding: 9px 22px; white-space: nowrap;
+    box-shadow: 0 6px 30px rgba(0,0,0,0.55), 0 0 26px var(--rc-glow, rgba(201,166,255,0.4));
+    animation: pop 0.4s cubic-bezier(0.2, 1.6, 0.4, 1);
+  }
+  #result .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--rc, #c9a6ff); }
+  #result .txt { font-size: 20px; font-weight: 800; }
+  #result img { width: 26px; height: 26px; object-fit: contain; }
+  @keyframes pop { from { transform: scale(0.6); opacity: 0; } }
+  #stage.done #frame { border-color: rgba(180, 150, 255, 0.9); }
+  #testBtn {
+    position: fixed; right: 10px; bottom: 10px; z-index: 20;
+    font-family: inherit; font-size: 13px; padding: 6px 14px; border-radius: 8px;
+    border: 1px solid #555; background: #1c2130; color: #fff; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="title"></div>
+  <div id="frameWrap">
+    <div id="frame">
+      <div id="viewport"><div id="strip"></div></div>
+      <div id="marker"></div>
+    </div>
+    <div id="result"><div class="pill"><span class="dot"></span><span class="txt"></span></div></div>
+  </div>
+</div>
+<script src="/widgets/common/widget.js"></script>
+<script>
+(function () {
+  var P = TikkiesWidget.params;
+  var CARD_W = Math.max(70, Number(P.get('card')) || 120);
+  var GAP = 14;
+  var IDLE_HIDE = P.get('idlehide') === '1';
+  var PALETTE = ['#fe2c55', '#25c1c9', '#f0c060', '#7b5bd6', '#3ecf8e', '#e0904a', '#5b93cc', '#e0685f'];
+
+  document.documentElement.style.setProperty('--card-w', CARD_W + 'px');
+  var stage = document.getElementById('stage');
+  var strip = document.getElementById('strip');
+  var viewport = document.getElementById('viewport');
+  var titleEl = document.getElementById('title');
+  var resultEl = document.getElementById('result');
+
+  var segments = [];   // [{label, color}]
+  var animating = false;
+  var raf = null;
+
+  function colorOf(seg, i) { return (seg && seg.color) || PALETTE[i % PALETTE.length]; }
+  // #rrggbb → rgba(...) — ใช้แทน color-mix() ที่ OBS (Chromium เก่า) ไม่รองรับ
+  function rgba(hex, a) {
+    var m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '').trim());
+    if (!m) return 'rgba(91,147,204,' + a + ')';
+    var n = parseInt(m[1], 16);
+    return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+  }
+  function firstChar(s) {
+    s = String(s || '?').trim();
+    // ตัดสระ/วรรณยุกต์ไทยที่ยึดตัวหน้าไม่ได้ออก แล้วเอาอักษรตัวแรก
+    var m = s.replace(/[ัำ-ฺ็-๎]/g, '');
+    return (m[0] || s[0] || '?').toUpperCase();
+  }
+
+  function makeCard(seg, segIdx) {
+    var c = colorOf(seg, segIdx);
+    var d = document.createElement('div');
+    d.className = 'cardItem';
+    d.style.setProperty('--c', c);
+    d.style.setProperty('--c-glow', rgba(c, 0.55));
+    d.style.setProperty('--c-ring', rgba(c, 0.35));
+    // มีรูป → โชว์รูปแทนตัวอักษร (URL /media/... เป็น origin เดียวกับ server อยู่แล้ว)
+    if (seg.image) {
+      var im = document.createElement('img');
+      im.className = 'pic'; im.src = seg.image; im.alt = '';
+      im.onerror = function () { // โหลดรูปไม่ได้ → ถอยไปใช้ตัวอักษร
+        var big = document.createElement('div'); big.className = 'big'; big.textContent = firstChar(seg.label);
+        d.replaceChild(big, im);
+      };
+      d.appendChild(im);
+    } else {
+      var big = document.createElement('div'); big.className = 'big'; big.textContent = firstChar(seg.label);
+      d.appendChild(big);
+    }
+    var lbl = document.createElement('div'); lbl.className = 'lbl'; lbl.textContent = seg.label;
+    d.appendChild(lbl);
+    return d;
+  }
+
+  // แถบนิ่ง (idle): วนช่องรางวัลพอเต็มจอ กึ่งกลางแถบอยู่กลาง viewport
+  function renderIdle() {
+    if (animating) return;
+    strip.innerHTML = '';
+    if (!segments.length) return;
+    var need = Math.ceil((viewport.clientWidth || 900) / (CARD_W + GAP)) + 4;
+    for (var i = 0; i < need; i++) {
+      var si = i % segments.length;
+      strip.appendChild(makeCard(segments[si], si));
+    }
+    var total = need * (CARD_W + GAP) - GAP;
+    strip.style.transition = 'none';
+    strip.style.transform = 'translateX(' + ((viewport.clientWidth - total) / 2) + 'px)';
+    if (IDLE_HIDE) stage.classList.add('hidden');
+  }
+
+  function setSegments(list, title) {
+    segments = (list || []).filter(function (s) { return s && s.label; });
+    titleEl.textContent = title || '';
+    renderIdle();
+  }
+
+  function easeOutQuart(t) { return 1 - Math.pow(1 - t, 4); }
+
+  function spinTo(winnerIndex, durationSec, resultLabel, holdSec) {
+    if (!segments.length) return;
+    animating = true;
+    if (raf) cancelAnimationFrame(raf);
+    stage.classList.remove('hidden');
+    stage.classList.remove('done');
+    resultEl.classList.remove('show');
+
+    // สร้างแถบยาว: การ์ดสุ่มนำ ~46 ใบ แล้วปิดท้ายด้วยผู้ชนะ + การ์ดต่อท้ายอีกหน่อยให้ไม่โล่ง
+    var LEAD = 46, TAIL = 4;
+    strip.innerHTML = '';
+    var seq = [];
+    for (var i = 0; i < LEAD; i++) seq.push(Math.floor(Math.random() * segments.length));
+    // กันการ์ดก่อนหน้าเป็นตัวเดียวกับผู้ชนะ (จะดูเหมือนเลยเป้า)
+    if (seq[LEAD - 1] === winnerIndex) seq[LEAD - 1] = (winnerIndex + 1) % segments.length;
+    seq.push(winnerIndex);
+    for (var j = 0; j < TAIL; j++) seq.push(Math.floor(Math.random() * segments.length));
+    var cards = seq.map(function (si) { return makeCard(segments[si], si); });
+    cards.forEach(function (c) { strip.appendChild(c); });
+    var winCard = cards[LEAD];
+
+    // ตำแหน่งปลายทาง: กึ่งกลางการ์ดผู้ชนะตรงเส้นกลาง (+jitter เล็กน้อยให้ดูธรรมชาติ)
+    var center = viewport.clientWidth / 2;
+    var winCenter = LEAD * (CARD_W + GAP) + CARD_W / 2;
+    var jitter = (Math.random() - 0.5) * CARD_W * 0.4;
+    var to = center - winCenter + jitter;
+    var from = center - CARD_W / 2 + (CARD_W + GAP) * 2; // เริ่มจากโซนต้นแถบ
+    strip.style.transition = 'none';
+    strip.style.transform = 'translateX(' + from + 'px)';
+
+    var t0 = performance.now();
+    var dur = Math.max(2, durationSec) * 1000;
+    function frame(now) {
+      var t = Math.min(1, (now - t0) / dur);
+      var x = from + (to - from) * easeOutQuart(t);
+      strip.style.transform = 'translateX(' + x + 'px)';
+      if (t < 1) { raf = requestAnimationFrame(frame); return; }
+      // จบ — ไฮไลต์ผู้ชนะ + ป้ายผล
+      winCard.classList.add('win');
+      stage.classList.add('done');
+      var rc = winCard.style.getPropertyValue('--c');
+      resultEl.style.setProperty('--rc', rc);
+      resultEl.style.setProperty('--rc-glow', rgba(rc, 0.4));
+      resultEl.querySelector('.txt').textContent = resultLabel;
+      // โชว์รูปรางวัลในป้ายผลด้วย (ถ้ามี)
+      var oldImg = resultEl.querySelector('img'); if (oldImg) oldImg.remove();
+      var winSeg = segments[seq[LEAD]];
+      if (winSeg && winSeg.image) {
+        var ri = document.createElement('img'); ri.src = winSeg.image; ri.alt = '';
+        resultEl.querySelector('.pill').insertBefore(ri, resultEl.querySelector('.txt'));
+      }
+      resultEl.classList.add('show');
+      setTimeout(function () {
+        resultEl.classList.remove('show');
+        stage.classList.remove('done');
+        animating = false;
+        renderIdle();
+      }, (holdSec || 6) * 1000);
+    }
+    raf = requestAnimationFrame(frame);
+  }
+
+  TikkiesWidget.connect({
+    onEvent: function (event, data) {
+      if (event === 'snapshot') {
+        var w = data && data.settings && data.settings.wheel;
+        if (w) setSegments(w.segments, w.title);
+      } else if (event === 'wheelSpin') {
+        segments = (data.segments || segments).filter(function (s) { return s && s.label; });
+        titleEl.textContent = data.title || titleEl.textContent;
+        spinTo(data.winnerIndex, data.durationSec || 8, data.label, data.resultHoldSec);
+      }
+    }
+  });
+
+  window.addEventListener('resize', renderIdle);
+
+  if (P.get('debug') === '1') {
+    var b = document.createElement('button');
+    b.id = 'testBtn'; b.textContent = 'หมุนทดสอบ';
+    b.onclick = function () {
+      if (animating || !segments.length) return;
+      var i = Math.floor(Math.random() * segments.length);
+      spinTo(i, 5, segments[i].label, 4);
+    };
+    document.body.appendChild(b);
+  }
+})();
+</script>
+</body>
+</html>

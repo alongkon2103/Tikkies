@@ -153,10 +153,12 @@ function buildConn(username, TikTokLiveConnection, WebcastEvent, ControlEvent) {
   on(WebcastEvent.GIFT, d => { debugCapture('gift', d); bus.emit('gift', normGift(d)); });
   on(WebcastEvent.LIKE, d => {
     debugCapture('like', d);
+    // v2 proto ใช้ field `count` (จำนวนไลค์ใน batch นี้ เช่นกดคอมโบรัวๆ = 15) และ
+    // `total` (ยอดรวมจริงของห้อง, มาเป็น string) — v1 ใช้ likeCount/totalLikeCount (เผื่อไว้ทั้งคู่)
     bus.emit('like', {
       ...normUser(d.user || d),
-      likeCount: Number(d.likeCount || 1),
-      totalLikeCount: Number(d.totalLikeCount || 0)
+      likeCount: Number(firstOf(d.likeCount, d.count, 1)) || 1,
+      totalLikeCount: Number(firstOf(d.totalLikeCount, d.total, 0)) || 0
     });
   });
   on(WebcastEvent.FOLLOW, d => { debugCapture('follow', d); bus.emit('follow', normUser(d.user || d)); });
@@ -167,10 +169,14 @@ function buildConn(username, TikTokLiveConnection, WebcastEvent, ControlEvent) {
   on(WebcastEvent.SUB_NOTIFY, onSubscribe);
   on(WebcastEvent.MEMBER, d => { debugCapture('member', d); bus.emit('member', normUser(d.user || d)); });
   on(WebcastEvent.ROOM_USER, d => {
-    const top = Array.isArray(d.topViewers)
-      ? d.topViewers.filter(t => t && t.user).map(t => ({ ...normUser(t.user), coinCount: Number(t.coinCount || 0) }))
-      : [];
-    bus.emit('roomStats', { viewerCount: Number(d.viewerCount || 0), topViewers: top });
+    debugCapture('roomUser', d);
+    // v2/v3 proto: `total` = ผู้ชมตอนนี้ (string), `ranks` = Contributor[]{user, score}
+    // v1 ใช้ viewerCount/topViewers{coinCount} — เผื่อไว้ทั้งสองชุด (บั๊กเดิม: อ่านแต่ v1 เลยขึ้น 0 ตลอด)
+    const rawTop = Array.isArray(d.topViewers) && d.topViewers.length ? d.topViewers
+      : (Array.isArray(d.ranks) ? d.ranks : []);
+    const top = rawTop.filter(t => t && t.user)
+      .map(t => ({ ...normUser(t.user), coinCount: Number(firstOf(t.coinCount, t.score, 0)) || 0 }));
+    bus.emit('roomStats', { viewerCount: Number(firstOf(d.viewerCount, d.total, 0)) || 0, topViewers: top });
   });
   on(WebcastEvent.STREAM_END, () => {
     bus.emit('streamEnd', { username });
@@ -275,6 +281,7 @@ async function runConnect(username, lib, waitForLive) {
       setStatus('connected');
       bus.emit('connected', { roomId: state.roomId, username });
       seedLikes(conn); // ดึงยอดไลค์รวมจริงจากข้อมูลห้อง (ถ้ามี) หลัง resetSession
+      seedViewers(conn); // ดึงจำนวนผู้ชมตอนนี้จากข้อมูลห้อง — แสดงทันทีไม่ต้องรอ ROOM_USER แรก
       return { ...state };
     } catch (err) {
       if (!wantConnected) throw err;
@@ -321,6 +328,27 @@ function seedLikes(c) {
       bus.emit('log', { level: 'info', msg: `ดึงยอดไลค์รวมเริ่มต้น ${seed.toLocaleString()} จากข้อมูลห้อง` });
     }
   } catch (_) { /* roomInfo ไม่มี like count — ปล่อยให้ like event แรก seed แทน */ }
+}
+
+// ---------- Seed ผู้ชมตอนนี้จาก roomInfo ----------
+// จะได้แสดงทันทีตอนเชื่อม ไม่ต้องรอ ROOM_USER event แรก (บางห้องมานานเป็นนาที)
+function digViewerCount(ri) {
+  if (!ri || typeof ri !== 'object') return 0;
+  const s = ri.stats || (ri.data && ri.data.stats) || {};
+  const candidates = [
+    ri.user_count, ri.userCount, ri.viewerCount,
+    s.user_count, s.userCount, s.viewer_count,
+    ri.data && ri.data.user_count,
+    ri.room && ri.room.user_count
+  ];
+  for (const v of candidates) { const n = Number(v); if (Number.isFinite(n) && n > 0) return n; }
+  return 0;
+}
+function seedViewers(c) {
+  try {
+    const seed = digViewerCount(c && c.roomInfo);
+    if (seed > 0) bus.emit('roomStats', { viewerCount: seed, topViewers: [] });
+  } catch (_) { /* ปล่อยให้ ROOM_USER event แรกอัปเดตแทน */ }
 }
 
 // ---------- Error → ข้อความไทย ----------

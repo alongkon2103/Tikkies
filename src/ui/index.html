@@ -34,6 +34,7 @@
       <button class="nav-item" data-tab="widgets" data-icon="widgets">Widgets (OBS)</button>
       <button class="nav-item" data-tab="tts" data-icon="tts">เสียงอ่าน (TTS)</button>
       <button class="nav-item" data-tab="goals" data-icon="goals">เป้าหมาย & Timer</button>
+      <button class="nav-item" data-tab="wheel" data-icon="sparkles">สุ่มรางวัล</button>
       <button class="nav-item" data-tab="settings" data-icon="settings">ตั้งค่า</button>
     </nav>
 
@@ -147,7 +148,7 @@
           <button class="btn btn-primary" id="newActionBtn" data-icon="plus">สร้าง Action</button>
         </div>
       </div>
-      <p class="muted">ตั้งกฎ: เมื่อเกิดเหตุการณ์ (ได้ของขวัญ / แชทคำสั่ง / ครบไลค์ ฯลฯ) → ให้ทำอะไร (แจ้งเตือน, อ่านเสียง, เล่นเสียง, กดปุ่มในเกม, สั่ง OBS, ยิง webhook)</p>
+      <p class="muted">ตั้งกฎ: เมื่อเกิดเหตุการณ์ (ได้ของขวัญ / แชทคำสั่ง / ครบไลค์ / กดคีย์ลัด / สุ่มรางวัลออก ฯลฯ) → ให้ทำอะไร (แจ้งเตือน, อ่านเสียง, เล่นเสียง, กดปุ่มในเกม, สั่ง OBS, ยิง webhook, สุ่มรางวัล)</p>
       <div class="templates-wrap">
         <div class="templates-label">เทมเพลตยอดฮิต — กดเพื่อเพิ่มแล้วปรับต่อได้</div>
         <div class="templates-bar" id="actionTemplates"></div>
@@ -255,6 +256,37 @@
             <button class="btn btn-ghost" data-timer-cmd="pause" data-icon="pause">พัก</button>
             <button class="btn btn-ghost" data-timer-cmd="reset" data-icon="reset">รีเซ็ต</button>
             <button class="btn btn-ghost" data-timer-cmd="add" data-add="60" data-icon="plus">1 นาที</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- กงล้อเสี่ยงโชค -->
+    <section class="tab" data-tab="wheel" hidden>
+      <h1>สุ่มรางวัล (Roulette)</h1>
+      <div class="card info-banner">
+        ตั้งรายการรางวัลด้านล่าง → เพิ่ม widget "Roulette สุ่มรางวัล" ใน OBS (ดูแท็บ Widgets) →
+        สั่งสุ่มได้ 3 ทาง: สร้าง <b>Action</b> ที่มีการกระทำ "สุ่มรางวัล" (เช่น เมื่อได้ของขวัญที่กำหนด),
+        ตั้ง<b>คีย์ลัด</b>, หรือกดปุ่มสุ่มทดสอบในหน้านี้
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title" data-icon="sparkles">รายการรางวัล</div>
+          <div class="hint" style="margin-bottom:8px">เลือกสีของแต่ละช่องได้ · น้ำหนัก = โอกาสออก (ยิ่งมากยิ่งออกง่าย) เช่น 3 ออกง่ายกว่า 1 สามเท่า</div>
+          <div id="wheelSegments"></div>
+          <button class="btn btn-ghost btn-sm" id="addSegmentBtn" data-icon="plus">เพิ่มรางวัล</button>
+        </div>
+        <div class="card">
+          <div class="card-title" data-icon="settings">ตั้งค่า</div>
+          <div class="field"><label>หัวข้อ (โชว์บน widget)</label><input type="text" data-wheel="title"></div>
+          <div class="grid2">
+            <div class="field"><label>เวลาสุ่ม (วินาที)</label><input type="number" min="2" max="30" data-wheel="durationSec"></div>
+            <div class="field"><label>โชว์ผลค้างไว้ (วินาที)</label><input type="number" min="2" max="60" data-wheel="resultHoldSec"></div>
+          </div>
+          <label class="switch-row"><span>ประกาศผลด้วยเสียงอ่าน (TTS)</span><input type="checkbox" data-wheel="announceTts"></label>
+          <div style="margin-top:12px">
+            <button class="btn btn-primary" id="wheelSpinBtn" data-icon="play">สุ่มทดสอบ</button>
+            <span class="hint" style="display:inline;margin-left:8px">ผลจะแสดงบน widget ที่เปิดอยู่</span>
           </div>
         </div>
       </div>

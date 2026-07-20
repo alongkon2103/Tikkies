@@ -14,6 +14,8 @@ const tts = require('./src/core/tts');
 const ttsPlayer = require('./src/core/ttsPlayer');
 const obs = require('./src/core/obs');
 const giftCatalog = require('./src/core/giftCatalog');
+const wheel = require('./src/core/wheel');
+const hotkeys = require('./src/core/hotkeys');
 
 let win = null;
 
@@ -42,7 +44,7 @@ const FORWARD_EVENTS = [
   'chat', 'gift', 'like', 'follow', 'share', 'subscribe', 'member',
   'roomStats', 'connected', 'disconnected', 'streamEnd', 'connectionState',
   'alert', 'tts', 'goals', 'leaderboard', 'stats', 'timer', 'action',
-  'sound', 'log', 'obsState'
+  'sound', 'log', 'obsState', 'wheelSpin', 'wheelResult'
 ];
 
 function createWindow() {
@@ -145,6 +147,18 @@ const handlers = {
     return { ok: true, actions: valid, total: incoming.length };
   },
 
+  'wheel:spin': () => wheel.spin('test'),
+
+  // อัพโหลดไฟล์สื่อเข้าคลังแอป (copy เข้า userData/media) → คืน URL /media/... ใช้ใน widget ได้เลย
+  'media:import': async ({ filters }) => {
+    const res = await dialog.showOpenDialog(win, {
+      properties: ['openFile'],
+      filters: filters || [{ name: 'รูป', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] }]
+    });
+    if (res.canceled || !res.filePaths[0]) return null;
+    return require('./src/core/media').importFile(res.filePaths[0]);
+  },
+
   'tts:test': ({ text }) => tts.speak(text || 'ทดสอบเสียงอ่านจาก Tikkies Tools'),
 
   'tts:voices': () => ttsPlayer.getVoices(),
@@ -201,6 +215,7 @@ app.whenReady().then(async () => {
 
   createWindow();
   setupAutoUpdate();
+  hotkeys.init(); // globalShortcut ใช้ได้หลัง app ready เท่านั้น
 
   if (settings.get().autoConnect && settings.get().username) {
     tiktok.connect().catch(err =>
@@ -211,6 +226,8 @@ app.whenReady().then(async () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
+
+app.on('will-quit', () => hotkeys.dispose());
 
 app.on('window-all-closed', () => {
   // ปิดหน้าต่างแล้วปิดแอปเลย (รวมถึง macOS เพราะเซิร์ฟเวอร์/การเชื่อมต่อทำงานเบื้องหลัง)
