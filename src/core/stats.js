@@ -105,7 +105,8 @@ function timerControl(cmd, payload = {}) {
       clearInterval(timerInterval);
       break;
     case 'add':
-      timer.remainingSec += (payload.seconds || 60);
+      // ติดลบได้ (เช่น action หักเวลา) แต่ไม่ให้ต่ำกว่า 0
+      timer.remainingSec = Math.max(0, timer.remainingSec + (Number(payload.seconds) || 60));
       break;
     default:
       throw new Error('ไม่รู้จักคำสั่ง timer: ' + cmd);

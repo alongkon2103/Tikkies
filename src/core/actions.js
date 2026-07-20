@@ -117,6 +117,13 @@ async function run(action, eventData) {
           require('./wheel').spin('action:' + (action.name || action.id));
           break;
         }
+        case 'timer': {
+          // สั่ง Subathon Timer: add (เพิ่ม/ลดวินาที — ติดลบได้), start, pause, reset
+          const stats = require('./stats');
+          const cmd = r.timerCmd || 'add';
+          stats.timerControl(cmd, cmd === 'add' ? { seconds: Number(r.seconds) || 60 } : {});
+          break;
+        }
         case 'webhook': {
           if (!r.url) throw new Error('ไม่ได้ระบุ URL ของ webhook');
           const controller = new AbortController();

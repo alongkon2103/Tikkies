@@ -32,7 +32,10 @@ const DEFAULTS = {
     //                {type:'tts', text}, {type:'sound', url},
     //                {type:'keypress', key, modifiers, holdMs},
     //                {type:'obs', obsAction, scene, source, visible},
-    //                {type:'webhook', url, method, body} ] }
+    //                {type:'webhook', url, method, body},
+    //                {type:'wheel'},
+    //                {type:'timer', timerCmd:'add'|'start'|'pause'|'reset', seconds} ] }
+    // trigger เพิ่มเติม: {type:'hotkey', accelerator}, {type:'wheelResult', prize}
   ],
   goals: {
     likes:     { enabled: true,  target: 1000, label: 'เป้าหมายหัวใจ' },

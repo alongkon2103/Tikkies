@@ -20,7 +20,8 @@ window.ActionsEditor = (function () {
     { v: 'keypress', t: 'กดปุ่ม', icon: 'keyboard', desc: 'ส่งปุ่มเข้าเกม/แอป' },
     { v: 'obs', t: 'สั่ง OBS', icon: 'video', desc: 'เปลี่ยนซีน/ซ่อนแหล่ง' },
     { v: 'webhook', t: 'Webhook', icon: 'webhook', desc: 'ยิง HTTP request' },
-    { v: 'wheel', t: 'สุ่มรางวัล', icon: 'sparkles', desc: 'Roulette บน widget' }
+    { v: 'wheel', t: 'สุ่มรางวัล', icon: 'sparkles', desc: 'Roulette บน widget' },
+    { v: 'timer', t: 'Subathon Timer', icon: 'timer', desc: 'เพิ่ม/ลดเวลา หรือสั่งจับเวลา' }
   ];
   function respMeta(type) {
     return RESP_TYPES.filter(function (x) { return x.v === type; })[0] || { t: type, icon: 'info', desc: '' };
@@ -401,6 +402,21 @@ window.ActionsEditor = (function () {
         visSel.addEventListener('change', function () { r.visible = visSel.value === 'true'; });
         container.appendChild(field('สถานะ', visSel));
       }
+    } else if (r.type === 'timer') {
+      var tcSel = el('select', {}, opt([
+        { v: 'add', t: 'เพิ่ม/ลดเวลา (วินาที)' },
+        { v: 'start', t: 'เริ่มจับเวลา' },
+        { v: 'pause', t: 'พักจับเวลา' },
+        { v: 'reset', t: 'รีเซ็ตกลับเวลาเริ่มต้น' }
+      ], r.timerCmd || 'add'));
+      r.timerCmd = r.timerCmd || 'add';
+      tcSel.addEventListener('change', function () { r.timerCmd = tcSel.value; renderRespFields(container, r); });
+      container.appendChild(field('คำสั่ง Timer', tcSel, 'ตั้งค่า Subathon Timer ได้ในแท็บ "เป้าหมาย & Timer"'));
+      if ((r.timerCmd || 'add') === 'add') {
+        container.appendChild(field('วินาที (ติดลบ = หักเวลา)',
+          bind(el('input', { type: 'number', step: '1', value: r.seconds != null ? r.seconds : 60 }), 'seconds', true),
+          'เช่น 30 = +30 วิ · -60 = หัก 1 นาที'));
+      }
     } else if (r.type === 'wheel') {
       container.appendChild(el('p', { class: 'hint', text: 'จะสุ่มรางวัลตามรายการที่ตั้งไว้ในแท็บ "สุ่มรางวัล" — ผลแสดงบน widget Roulette ใน OBS' }));
     } else if (r.type === 'webhook') {
@@ -452,6 +468,7 @@ window.ActionsEditor = (function () {
       case 'keypress': return { type: 'keypress', key: '', modifiers: [], holdMs: 0 };
       case 'obs': return { type: 'obs', obsAction: 'setScene', scene: '' };
       case 'wheel': return { type: 'wheel' };
+      case 'timer': return { type: 'timer', timerCmd: 'add', seconds: 60 };
       case 'webhook': return { type: 'webhook', url: '', method: 'POST' };
       default: return { type: type };
     }

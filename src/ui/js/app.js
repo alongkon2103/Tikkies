@@ -405,7 +405,7 @@
       default: return t.type || '';
     }
   }
-  var RESP_ICON = { alert: 'bell', tts: 'tts', sound: 'music', keypress: 'keyboard', obs: 'video', webhook: 'webhook', wheel: 'sparkles' };
+  var RESP_ICON = { alert: 'bell', tts: 'tts', sound: 'music', keypress: 'keyboard', obs: 'video', webhook: 'webhook', wheel: 'sparkles', timer: 'timer' };
 
   function renderActions() {
     var list = $('#actionsList');

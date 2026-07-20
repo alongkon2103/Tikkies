@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; media-src 'self' https: file: data:; connect-src 'self';">
+<!-- img-src อนุญาต http://localhost ด้วย — รูปที่อัพโหลด (เช่นช่องรางวัล) เสิร์ฟผ่าน overlay server ในเครื่อง -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: http://localhost:* http://127.0.0.1:*; media-src 'self' https: file: data: http://localhost:* http://127.0.0.1:*; connect-src 'self';">
 <title>Tikkies Tools</title>
 <link rel="stylesheet" href="css/app.css">
 </head>
