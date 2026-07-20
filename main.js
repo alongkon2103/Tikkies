@@ -21,23 +21,43 @@ const sessionLog = require('./src/core/sessionLog');
 let win = null;
 
 // อัปเดตอัตโนมัติ (เฉพาะตัวที่ build แล้ว) — ดึง release ใหม่จาก GitHub มาติดตั้งเอง
+// แจ้งความคืบหน้าให้ Dashboard ผ่าน event 'updateStatus' (แถบแจ้งเตือน + ปุ่มเช็คในตั้งค่า)
+let autoUpdater = null;
+let updateState = { state: 'idle', version: '' };
+let updateVersion = '';
+
+function emitUpdate(s) { updateState = s; bus.emit('updateStatus', s); }
+
+// สร้าง/คืน autoUpdater พร้อมผูก handler ครั้งเดียว (ใช้ทั้งเช็คตอนเปิดแอปและเช็คเอง)
+function getAutoUpdater() {
+  if (autoUpdater) return autoUpdater;
+  try { ({ autoUpdater } = require('electron-updater')); } catch (_) { return null; }
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.on('checking-for-update', () => emitUpdate({ state: 'checking' }));
+  autoUpdater.on('update-available', (info) => {
+    updateVersion = (info && info.version) || '';
+    emitUpdate({ state: 'downloading', version: updateVersion, percent: 0 });
+    bus.emit('log', { level: 'info', msg: 'พบเวอร์ชันใหม่ ' + updateVersion + ' — กำลังดาวน์โหลด...' });
+  });
+  autoUpdater.on('update-not-available', (info) =>
+    emitUpdate({ state: 'none', version: (info && info.version) || app.getVersion() }));
+  autoUpdater.on('download-progress', (p) =>
+    emitUpdate({ state: 'downloading', version: updateVersion, percent: Math.round(p && p.percent || 0) }));
+  autoUpdater.on('update-downloaded', (info) => {
+    updateVersion = (info && info.version) || updateVersion;
+    emitUpdate({ state: 'downloaded', version: updateVersion });
+    bus.emit('log', { level: 'info', msg: 'ดาวน์โหลดเวอร์ชัน ' + updateVersion + ' แล้ว — กดรีสตาร์ทเพื่อติดตั้ง' });
+  });
+  autoUpdater.on('error', (err) =>
+    emitUpdate({ state: 'error', message: (err && err.message) || String(err) }));
+  return autoUpdater;
+}
+
 function setupAutoUpdate() {
   if (!app.isPackaged) return; // ตอน dev ไม่เช็คอัปเดต
-  let autoUpdater;
-  try { ({ autoUpdater } = require('electron-updater')); } catch (_) { return; }
-  autoUpdater.autoDownload = true;
-  autoUpdater.on('update-available', (info) => bus.emit('log', { level: 'info', msg: 'พบเวอร์ชันใหม่ ' + (info && info.version) + ' — กำลังดาวน์โหลด...' }));
-  autoUpdater.on('update-downloaded', (info) => {
-    bus.emit('log', { level: 'info', msg: 'ดาวน์โหลดเวอร์ชัน ' + (info && info.version) + ' แล้ว จะติดตั้งเมื่อปิดโปรแกรม' });
-    if (win && !win.isDestroyed()) {
-      dialog.showMessageBox(win, {
-        type: 'info', buttons: ['รีสตาร์ทเลย', 'ไว้ทีหลัง'], defaultId: 0,
-        title: 'มีอัปเดตใหม่', message: 'ดาวน์โหลดเวอร์ชัน ' + (info && info.version) + ' เสร็จแล้ว', detail: 'รีสตาร์ทโปรแกรมเพื่อติดตั้ง'
-      }).then((r) => { if (r.response === 0) autoUpdater.quitAndInstall(); });
-    }
-  });
-  autoUpdater.on('error', (err) => bus.emit('log', { level: 'warn', msg: 'เช็คอัปเดตไม่สำเร็จ: ' + (err && err.message || err) }));
-  autoUpdater.checkForUpdates().catch(() => {});
+  const u = getAutoUpdater();
+  if (u) u.checkForUpdates().catch(() => {});
 }
 
 // event ที่ส่งต่อให้หน้า Dashboard แบบ realtime
@@ -45,7 +65,7 @@ const FORWARD_EVENTS = [
   'chat', 'gift', 'like', 'follow', 'share', 'subscribe', 'member',
   'roomStats', 'connected', 'disconnected', 'streamEnd', 'connectionState',
   'alert', 'tts', 'goals', 'leaderboard', 'stats', 'timer', 'action',
-  'sound', 'log', 'obsState', 'wheelSpin', 'wheelResult'
+  'sound', 'log', 'obsState', 'wheelSpin', 'wheelResult', 'updateStatus'
 ];
 
 function createWindow() {
@@ -149,6 +169,22 @@ const handlers = {
   },
 
   'wheel:spin': () => wheel.spin('test'),
+
+  // อัปเดตโปรแกรม — เช็คเอง / ติดตั้ง / อ่านสถานะล่าสุด
+  'update:check': () => {
+    if (!app.isPackaged) return { ok: false, dev: true, version: app.getVersion() };
+    const u = getAutoUpdater();
+    if (!u) return { ok: false, unavailable: true };
+    emitUpdate({ state: 'checking' });
+    u.checkForUpdates().catch((err) => emitUpdate({ state: 'error', message: (err && err.message) || String(err) }));
+    return { ok: true };
+  },
+  'update:install': () => {
+    const u = getAutoUpdater();
+    if (u) { try { u.quitAndInstall(); } catch (_) {} }
+    return { ok: true };
+  },
+  'update:state': () => ({ ...updateState, current: app.getVersion(), packaged: app.isPackaged }),
 
   // ประวัติไลฟ์ (session report)
   'sessions:list': () => sessionLog.list(),

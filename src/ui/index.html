@@ -48,6 +48,11 @@
 
   <!-- เนื้อหาหลัก -->
   <main id="main">
+    <!-- แถบแจ้งอัปเดต (โผล่เหนือทุกแท็บเมื่อมีเวอร์ชันใหม่) -->
+    <div id="updateBanner" class="update-banner" hidden>
+      <span id="updateBannerText"></span>
+      <button class="btn btn-sm" id="updateInstallBtn" hidden>รีสตาร์ทเลย</button>
+    </div>
     <!-- ภาพรวม -->
     <section class="tab" data-tab="overview">
       <h1>ภาพรวม</h1>
@@ -342,6 +347,13 @@
           </div>
         </div>
         <div class="obs-scenes" id="obsScenes"></div>
+      </div>
+      <div class="card">
+        <div class="card-title" data-icon="download">อัปเดตโปรแกรม</div>
+        <div class="row-between">
+          <span class="muted small" id="updateStatusText">เวอร์ชันปัจจุบัน</span>
+          <button class="btn btn-sm" id="checkUpdateBtn" data-icon="refresh">เช็คอัปเดต</button>
+        </div>
       </div>
       <div class="card">
         <div class="card-title" data-icon="info">เกี่ยวกับ</div>

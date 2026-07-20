@@ -42,6 +42,7 @@
       applyObsStatus(st.obs || {});
       $('#versionLabel').textContent = 'v' + S.version;
       $('#aboutVersion').textContent = 'v' + S.version;
+      $('#updateStatusText').textContent = 'เวอร์ชันปัจจุบัน v' + S.version;
       $('#serverStatus').textContent = 'เซิร์ฟเวอร์: :' + S.serverPort;
       loadVoices();
     } catch (e) {
@@ -130,6 +131,15 @@
         S.settings.actions = S.settings.actions || [];
         S.settings.actions.push(action);
         persistActions();
+      });
+    });
+
+    // อัปเดตโปรแกรม
+    $('#updateInstallBtn').addEventListener('click', function () { invoke('update:install'); });
+    $('#checkUpdateBtn').addEventListener('click', function () {
+      invoke('update:check').then(function (r) {
+        if (r && r.dev) toast('เช็คอัปเดตได้เฉพาะตัวที่ติดตั้งแล้ว (โหมด dev ข้าม)', '');
+        else if (r && r.unavailable) toast('ระบบอัปเดตใช้ไม่ได้บนเครื่องนี้', 'err');
       });
     });
 
@@ -976,6 +986,39 @@
       case 'obsState': applyObsStatus(data); break;
       case 'action': logStatus({ level: 'info', msg: (data.name || 'Action') + ' ทำงาน' }); break;
       case 'log': logStatus(data); if (data.level === 'error') toast(data.msg, 'err', 4000); break;
+      case 'updateStatus': applyUpdateStatus(data); break;
+    }
+  }
+
+  // ---------- อัปเดตโปรแกรม ----------
+  function applyUpdateStatus(s) {
+    var banner = $('#updateBanner');
+    var txt = $('#updateBannerText');
+    var installBtn = $('#updateInstallBtn');
+    var statusText = $('#updateStatusText');
+    var cur = 'v' + (S.version || '');
+    if (!s || !s.state) return;
+
+    // แถบบนหัว — โชว์เฉพาะตอนกำลังโหลด/พร้อมติดตั้ง
+    if (s.state === 'downloading') {
+      banner.hidden = false; banner.classList.remove('ready');
+      txt.textContent = '🎉 มีอัปเดต v' + (s.version || '') + ' — กำลังดาวน์โหลด...' + (s.percent ? ' (' + s.percent + '%)' : '');
+      installBtn.hidden = true;
+    } else if (s.state === 'downloaded') {
+      banner.hidden = false; banner.classList.add('ready');
+      txt.textContent = '✅ อัปเดต v' + (s.version || '') + ' พร้อมติดตั้งแล้ว';
+      installBtn.hidden = false;
+    } else {
+      banner.hidden = true;
+    }
+
+    // ข้อความในแท็บตั้งค่า
+    switch (s.state) {
+      case 'checking': statusText.textContent = 'กำลังเช็คอัปเดต...'; break;
+      case 'downloading': statusText.textContent = 'กำลังดาวน์โหลด v' + (s.version || '') + (s.percent ? ' (' + s.percent + '%)' : '') + '...'; break;
+      case 'downloaded': statusText.textContent = 'อัปเดต v' + (s.version || '') + ' พร้อมติดตั้ง — กดรีสตาร์ทด้านบน'; break;
+      case 'none': statusText.textContent = '✓ เป็นเวอร์ชันล่าสุดแล้ว (' + cur + ')'; break;
+      case 'error': statusText.textContent = 'เช็คอัปเดตไม่สำเร็จ: ' + (s.message || ''); break;
     }
   }
 
