@@ -273,59 +273,99 @@ window.ActionsEditor = (function () {
     return giftCache || [];
   }
 
-  // ---- ช่องเลือกของขวัญแบบ dropdown เอง — แสดงรูปจริง+ราคา (datalist ของ browser ใส่รูปไม่ได้) ----
-  function giftAutocomplete(trigger) {
-    var input = el('input', { type: 'text', value: trigger.giftName || '', placeholder: 'พิมพ์ค้นหา หรือเว้นว่าง = ของขวัญทุกชนิด', autocomplete: 'off' });
-    var list = el('div', { class: 'gift-ac-list', hidden: 'hidden' });
-    var preview = el('div', { class: 'gift-preview' });
-    var wrap = el('div', { class: 'gift-ac' }, [input, list]);
-
-    function updatePreview() {
-      preview.innerHTML = '';
-      var name = (trigger.giftName || '').trim();
-      if (!name) { preview.textContent = 'จะทำงานกับของขวัญทุกชนิด'; return; }
-      var g = (giftCache || []).filter(function (x) { return x.name.toLowerCase() === name.toLowerCase(); })[0];
-      if (g) {
-        if (g.image) preview.appendChild(el('img', { src: g.image, alt: '' }));
-        preview.appendChild(el('span', { text: g.name + ' · ' + g.coins + ' เพชร' }));
-      } else {
-        preview.textContent = 'ไม่พบชื่อนี้ในรายการ (จะเทียบชื่อแบบตรงตัว)';
-      }
+  // ---- ตัวเลือกของขวัญแบบ modal เต็มจอ — ครบทุกชิ้น + ช่องค้นหา กดเลือกได้เลย ----
+  // (แยกชั้นจาก Tk.modal เพราะ modalHost มีช่องเดียว เปิดซ้อนจะทับตัว editor)
+  function openGiftPicker(currentName, onPick) {
+    var overlay = el('div', { class: 'gift-pick-overlay' });
+    function close() {
+      window.removeEventListener('keydown', onEsc, true);
+      overlay.remove();
     }
+    function onEsc(e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } }
+    window.addEventListener('keydown', onEsc, true);
+    overlay.addEventListener('mousedown', function (e) { if (e.target === overlay) close(); });
 
-    function renderList() {
-      var q = input.value.trim().toLowerCase();
+    var search = el('input', { type: 'text', placeholder: 'ค้นหาของขวัญ... เช่น rose', autocomplete: 'off' });
+    var grid = el('div', { class: 'gift-grid' });
+    var count = el('span', { class: 'gift-pick-count' });
+
+    function pick(name) { close(); onPick(name); }
+
+    function renderGrid() {
+      var q = search.value.trim().toLowerCase();
       var gifts = (giftCache || []).filter(function (g) { return !q || g.name.toLowerCase().indexOf(q) >= 0; });
-      // เรียงราคาถูก→แพง เหมือนที่คนเลือกของขวัญคุ้นเคย แล้วตัดที่ 60 แถวกันหน่วง
-      gifts = gifts.slice().sort(function (a, b) { return a.coins - b.coins; }).slice(0, 60);
-      list.innerHTML = '';
-      if (!gifts.length) { list.hidden = true; return; }
-      gifts.forEach(function (g) {
-        var row = el('div', { class: 'gift-ac-row' }, [
-          g.image ? el('img', { src: g.image, alt: '', loading: 'lazy' }) : el('span', { class: 'gift-ac-noimg' }),
-          el('span', { class: 'gift-ac-name', text: g.name }),
-          el('span', { class: 'gift-ac-coins', text: g.coins + ' เพชร' })
+      gifts = gifts.slice().sort(function (a, b) { return a.coins - b.coins; });
+      grid.innerHTML = '';
+      count.textContent = gifts.length + ' ชิ้น';
+
+      // ตัวเลือก "ทุกชนิด" อยู่หัวเสมอ (ตอนไม่ได้ค้นหา)
+      if (!q) {
+        var anyCell = el('button', { type: 'button', class: 'gift-cell any' + (!currentName ? ' active' : '') }, [
+          el('div', { class: 'gift-cell-img', text: '🎁' }),
+          el('div', { class: 'gift-cell-name', text: 'ทุกชนิด' }),
+          el('div', { class: 'gift-cell-coins', text: 'ของขวัญอะไรก็ได้' })
         ]);
-        // ใช้ mousedown กัน blur ของ input ปิด list ก่อนคลิกติด
-        row.addEventListener('mousedown', function (e) {
-          e.preventDefault();
-          trigger.giftName = g.name;
-          input.value = g.name;
-          list.hidden = true;
-          updatePreview();
-        });
-        list.appendChild(row);
+        anyCell.addEventListener('click', function () { pick(''); });
+        grid.appendChild(anyCell);
+      }
+      if (!gifts.length && q) {
+        grid.appendChild(el('div', { class: 'gift-grid-empty', text: 'ไม่พบของขวัญชื่อ "' + q + '"' }));
+      }
+      gifts.forEach(function (g) {
+        var cell = el('button', { type: 'button', class: 'gift-cell' + (g.name === currentName ? ' active' : '') }, [
+          g.image
+            ? el('img', { class: 'gift-cell-img', src: g.image, alt: '', loading: 'lazy' })
+            : el('div', { class: 'gift-cell-img', text: '🎁' }),
+          el('div', { class: 'gift-cell-name', text: g.name }),
+          el('div', { class: 'gift-cell-coins', text: g.coins + ' 💎' })
+        ]);
+        cell.addEventListener('click', function () { pick(g.name); });
+        grid.appendChild(cell);
       });
-      list.hidden = false;
     }
+    search.addEventListener('input', renderGrid);
 
-    input.addEventListener('input', function () { trigger.giftName = input.value; updatePreview(); renderList(); });
-    input.addEventListener('focus', function () { loadGifts().then(renderList); });
-    input.addEventListener('blur', function () { setTimeout(function () { list.hidden = true; }, 150); });
-    input.addEventListener('keydown', function (e) { if (e.key === 'Escape') list.hidden = true; });
-    loadGifts().then(updatePreview);
+    overlay.appendChild(el('div', { class: 'gift-pick-modal' }, [
+      el('div', { class: 'gift-pick-head' }, [
+        el('h2', { text: 'เลือกของขวัญ' }),
+        count,
+        el('button', { type: 'button', class: 'btn btn-ghost btn-sm', text: '✕ ปิด', onclick: close })
+      ]),
+      search,
+      grid
+    ]));
+    document.body.appendChild(overlay);
+    search.focus();
+    loadGifts().then(renderGrid);
+  }
 
-    return field('ชื่อของขวัญ', el('div', {}, [wrap, preview]), 'เลือกจากรายชื่อของขวัญจริง 405 ชนิด (มีรูป+ราคา)');
+  // field ของ trigger gift: โชว์ของขวัญที่เลือกอยู่ + ปุ่มเปิด modal เลือก
+  function giftAutocomplete(trigger) {
+    var display = el('button', { type: 'button', class: 'gift-select' });
+    function refresh() {
+      display.innerHTML = '';
+      var name = (trigger.giftName || '').trim();
+      var g = name ? (giftCache || []).filter(function (x) { return x.name.toLowerCase() === name.toLowerCase(); })[0] : null;
+      if (!name) {
+        display.appendChild(el('span', { class: 'gift-select-emoji', text: '🎁' }));
+        display.appendChild(el('span', { class: 'gift-select-name', text: 'ของขวัญทุกชนิด' }));
+      } else {
+        if (g && g.image) display.appendChild(el('img', { src: g.image, alt: '' }));
+        else display.appendChild(el('span', { class: 'gift-select-emoji', text: '🎁' }));
+        display.appendChild(el('span', { class: 'gift-select-name', text: name }));
+        if (g) display.appendChild(el('span', { class: 'gift-select-coins', text: g.coins + ' 💎' }));
+      }
+      display.appendChild(el('span', { class: 'gift-select-cta', text: 'เปลี่ยน' }));
+    }
+    display.addEventListener('click', function () {
+      openGiftPicker((trigger.giftName || '').trim(), function (name) {
+        trigger.giftName = name;
+        refresh();
+      });
+    });
+    loadGifts().then(refresh);
+    refresh();
+    return field('ของขวัญที่จะจับ', display, 'กดเพื่อเปิดหน้าเลือกของขวัญทั้งหมด 405 ชนิด (มีรูป+ราคา ค้นหาได้)');
   }
 
   // ---- Response config UI ตามชนิด ----
