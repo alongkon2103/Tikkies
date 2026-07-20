@@ -1,5 +1,5 @@
 // Tikkies Tools — Electron main process
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -238,6 +238,10 @@ const handlers = {
 };
 
 app.whenReady().then(async () => {
+  // เอาแถบเมนู File/Edit/View/Window/Help ออกบน Windows/Linux (แอปเราไม่ได้ใช้)
+  // macOS คงเมนูไว้ — จำเป็นต่อ shortcut มาตรฐาน (⌘C/⌘V/⌘Q) ที่อยู่บนแถบเมนูบนสุดของจอ
+  if (process.platform !== 'darwin') Menu.setApplicationMenu(null);
+
   settings.load();
   stats.init();
   actions.init();
