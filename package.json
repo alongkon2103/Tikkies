@@ -57,7 +57,8 @@
     "publish": {
       "provider": "github",
       "owner": "alongkon2103",
-      "repo": "Tikkies"
+      "repo": "Tikkies",
+      "releaseType": "release"
     }
   }
 }
