@@ -14,9 +14,51 @@
     return `ws://${host}:${port}`;
   }
 
+  // ---- โหมดตัวอย่าง (?preview=1) — หน้าแต่งธีมในแอปใช้ ----
+  // ป้อน event จำลองให้ widget ตัวเองแบบ local ล้วนๆ (ไม่ยิงผ่าน server → ไม่เด้งบน OBS จริง)
+  function startPreview(onEvent) {
+    var AV = ''; // ไม่มีรูป — widget จะ fallback เป็นตัวอักษร/อิโมจิเอง
+    var seedEvents = [
+      ['goals', {
+        likes: { enabled: true, target: 1000, label: 'เป้าหมายหัวใจ', current: 683 },
+        diamonds: { enabled: true, target: 500, label: 'เป้าหมายเพชร', current: 214 },
+        followers: { enabled: false, target: 50, label: 'ผู้ติดตามใหม่', current: 12 }
+      }],
+      ['leaderboard', { top: [
+        { uniqueId: 'vip1', nickname: 'สายเปย์ตัวจริง', profilePictureUrl: AV, diamonds: 899, gifts: 25 },
+        { uniqueId: 'vip2', nickname: 'NoBoss', profilePictureUrl: AV, diamonds: 350, gifts: 12 },
+        { uniqueId: 'vip3', nickname: 'ใข่มุก', profilePictureUrl: AV, diamonds: 120, gifts: 6 }
+      ] }],
+      ['timer', { running: true, remainingSec: 5025, totalAddedSec: 340, label: 'Subathon Timer', enabled: true }],
+      ['roomStats', { viewerCount: 156, topViewers: [] }]
+    ];
+    var loop = [
+      ['chat', { nickname: 'สมชายใจดี', uniqueId: 'user_somchai', profilePictureUrl: AV, comment: 'สวัสดีครับ ทดสอบธีมอยู่ 🎉', followRole: 1, isModerator: false, isSubscriber: false }],
+      ['gift', { nickname: 'สายเปย์ตัวจริง', uniqueId: 'vip1', profilePictureUrl: AV, giftName: 'Rose', giftPictureUrl: '', repeatCount: 3, diamondCount: 1, diamondTotal: 3, repeatEnd: true, streakable: true }],
+      ['tts', { id: 'p1', text: 'ขอบคุณสมชายใจดีสำหรับกุหลาบครับ' }],
+      ['chat', { nickname: 'แฟนคลับ', uniqueId: 'fan01', profilePictureUrl: AV, comment: 'สีสวยมากก 😍', followRole: 0, isModerator: false, isSubscriber: false }],
+      ['follow', { nickname: 'แฟนคลับ', uniqueId: 'fan01', profilePictureUrl: AV }],
+      ['gift', { nickname: 'NoBoss', uniqueId: 'vip2', profilePictureUrl: AV, giftName: 'Galaxy', giftPictureUrl: '', repeatCount: 1, diamondCount: 1000, diamondTotal: 1000, repeatEnd: true, streakable: false }],
+      ['like', { nickname: 'ผู้ชม', uniqueId: 'viewer1', likeCount: 15, totalLikeCount: 683 }]
+    ];
+    var wheelSample = ['wheelSpin', {
+      spinId: 'pv', winnerIndex: 1, label: 'รางวัลใหญ่!', durationSec: 5, resultHoldSec: 3,
+      title: 'สุ่มรางวัล', segments: [{ label: '+5' }, { label: 'รางวัลใหญ่!' }, { label: '-5' }, { label: 'หมุนอีกครั้ง' }]
+    }];
+    function fire(ev) { try { onEvent(ev[0], JSON.parse(JSON.stringify(ev[1]))); } catch (_) {} }
+    setTimeout(function () {
+      seedEvents.forEach(fire);
+      var i = 0;
+      setInterval(function () { fire(loop[i % loop.length]); i += 1; }, 3200);
+      fire(wheelSample);
+      setInterval(function () { fire(wheelSample); }, 12000);
+    }, 600);
+  }
+
   function connect(handlers) {
     let retry = 0;
     let ws;
+    if (params.get('preview') === '1' && handlers.onEvent) startPreview(handlers.onEvent);
     function open() {
       ws = new WebSocket(wsUrl());
       ws.onopen = () => {

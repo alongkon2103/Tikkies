@@ -616,41 +616,52 @@
         { k: 'follows', label: 'แจ้งเตือนผู้ติดตาม', type: 'bool', def: true },
         { k: 'subs', label: 'แจ้งเตือนสมาชิก', type: 'bool', def: true },
         { k: 'shares', label: 'แจ้งเตือนแชร์', type: 'bool', def: false },
-        { k: 'sound', label: 'เปิดเสียง', type: 'bool', def: true }
+        { k: 'sound', label: 'เปิดเสียง', type: 'bool', def: true },
+        { k: 'duration', label: 'แสดงใบละ (วินาที)', type: 'number', def: 6, min: 3, max: 30 },
+        { k: 'mindiamonds', label: 'เพชรขั้นต่ำที่แจ้งเตือน', type: 'number', def: 0, min: 0, max: 99999 },
+        { k: 'scale', label: 'ขนาดรวม (%)', type: 'number', def: 100, min: 50, max: 250 }
       ] },
     { file: 'chat', icon: 'chat', name: 'Chat Overlay', desc: 'แชทสดพร้อม badge Mod/Sub/Follow', size: '380 x 600', params: '?avatars=0 ซ่อนรูป, ?hidecmd=1 ซ่อนคำสั่ง, ?size=16 ฟอนต์, ?fade=30 จางใน 30 วิ',
       opts: [
         { k: 'size', label: 'ขนาดฟอนต์ (px)', type: 'number', def: 16, min: 10, max: 40 },
         { k: 'avatars', label: 'แสดงรูปโปรไฟล์', type: 'bool', def: true },
-        { k: 'hidecmd', label: 'ซ่อนข้อความคำสั่ง (!...)', type: 'bool', def: false, invert: true },
+        { k: 'hidecmd', label: 'ซ่อนข้อความคำสั่ง (!...)', type: 'bool', def: false },
         { k: 'fade', label: 'จางหายใน (วินาที, 0 = ไม่จาง)', type: 'number', def: 0, min: 0, max: 300 }
       ] },
     { file: 'goal', icon: 'goals', name: 'Goal Bar', desc: 'หลอดเป้าหมาย หัวใจ/เพชร/ผู้ติดตาม', size: '460 x 260', params: '?goal=likes|diamonds|followers แสดงตัวเดียว',
       opts: [
         { k: 'accent', label: 'สีหลอด', type: 'color', def: '#fe2c55' },
-        { k: 'goal', label: 'แสดงเป้าหมาย', type: 'select', def: '', options: [{ v: '', t: 'ทั้งหมดที่เปิดไว้' }, { v: 'likes', t: 'หัวใจ' }, { v: 'diamonds', t: 'เพชร' }, { v: 'followers', t: 'ผู้ติดตาม' }] }
+        { k: 'goal', label: 'แสดงเป้าหมาย', type: 'select', def: '', options: [{ v: '', t: 'ทั้งหมดที่เปิดไว้' }, { v: 'likes', t: 'หัวใจ' }, { v: 'diamonds', t: 'เพชร' }, { v: 'followers', t: 'ผู้ติดตาม' }] },
+        { k: 'scale', label: 'ขนาดรวม (%)', type: 'number', def: 100, min: 50, max: 250 }
       ] },
     { file: 'leaderboard', icon: 'trophy', name: 'Leaderboard', desc: 'อันดับผู้ให้ของขวัญสูงสุด', size: '340 x 400', params: '?top=5 จำนวนอันดับ, ?title=0 ซ่อนหัวข้อ',
       opts: [
         { k: 'accent', label: 'สีกรอบอันดับ 1', type: 'color', def: '#ffbe46' },
         { k: 'top', label: 'จำนวนอันดับ', type: 'number', def: 5, min: 1, max: 20 },
-        { k: 'title', label: 'หัวข้อ (ใส่ 0 = ซ่อน)', type: 'text', def: '' }
+        { k: 'title', label: 'หัวข้อ (ใส่ 0 = ซ่อน)', type: 'text', def: '' },
+        { k: 'avatars', label: 'แสดงรูปโปรไฟล์', type: 'bool', def: true },
+        { k: 'scale', label: 'ขนาดรวม (%)', type: 'number', def: 100, min: 50, max: 250 }
       ] },
     { file: 'timer', icon: 'timer', name: 'Subathon Timer', desc: 'นาฬิกาถอยหลังบวกเวลาตามของขวัญ', size: '360 x 140', params: '?size=72 ขนาดตัวเลข',
       opts: [
         { k: 'accent', label: 'สีเวลาที่บวกเพิ่ม', type: 'color', def: '#25f4ee' },
-        { k: 'size', label: 'ขนาดตัวเลข (px)', type: 'number', def: 72, min: 24, max: 200 }
+        { k: 'size', label: 'ขนาดตัวเลข (px)', type: 'number', def: 72, min: 24, max: 200 },
+        { k: 'label', label: 'หัวข้อ (ใส่ 0 = ซ่อน)', type: 'text', def: '' },
+        { k: 'scale', label: 'ขนาดรวม (%)', type: 'number', def: 100, min: 50, max: 250 }
       ] },
     { file: 'tts', icon: 'tts', name: 'TTS Caption', desc: 'คำบรรยายข้อความที่กำลังอ่าน', size: '600 x 120', params: '?caption=0 ปิดคำบรรยาย',
       opts: [
         { k: 'accent', label: 'สีแถบข้าง', type: 'color', def: '#fe2c55' },
-        { k: 'caption', label: 'แสดงคำบรรยาย', type: 'bool', def: true }
+        { k: 'caption', label: 'แสดงคำบรรยาย', type: 'bool', def: true },
+        { k: 'scale', label: 'ขนาดรวม (%)', type: 'number', def: 100, min: 50, max: 250 }
       ] },
     { file: 'wheel', icon: 'sparkles', name: 'Roulette สุ่มรางวัล', desc: 'แถบสุ่มรางวัลแนวนอน (สไตล์เปิดกล่อง) — ตั้งค่าในแท็บ "สุ่มรางวัล"', size: '900 x 260', params: '?idlehide=1 ซ่อนตอนไม่หมุน, ?card=120 ขนาดการ์ด, ?debug=1 ปุ่มทดสอบ',
       opts: [
         { k: 'accent', label: 'สีเส้นชี้กลาง', type: 'color', def: '#fe2c55' },
         { k: 'card', label: 'ขนาดการ์ด (px)', type: 'number', def: 120, min: 70, max: 220 },
-        { k: 'idlehide', label: 'ซ่อนตอนไม่ได้สุ่ม', type: 'bool', def: false, invert: true }
+        { k: 'idlehide', label: 'ซ่อนตอนไม่ได้สุ่ม', type: 'bool', def: false },
+        { k: 'title', label: 'หัวข้อ (ใส่ 0 = ซ่อน)', type: 'text', def: '' },
+        { k: 'scale', label: 'ขนาดรวม (%)', type: 'number', def: 100, min: 50, max: 250 }
       ] }
   ];
   function renderWidgets() {
@@ -701,14 +712,15 @@
       return 'http://localhost:' + S.serverPort + '/widgets/' + w.file + '.html' + (qs.length ? '?' + qs.join('&') : '');
     }
 
-    var frame = el('iframe', { class: 'wc-preview', src: buildUrl() });
+    function previewUrl() { return buildUrl() + (buildUrl().indexOf('?') >= 0 ? '&' : '?') + 'preview=1'; }
+    var frame = el('iframe', { class: 'wc-preview', src: previewUrl() });
     var urlInput = el('input', { type: 'text', readonly: 'readonly', value: buildUrl(), onclick: function () { urlInput.select(); } });
     var reloadTimer = null;
     function refresh() {
       var u = buildUrl();
       urlInput.value = u;
       clearTimeout(reloadTimer);
-      reloadTimer = setTimeout(function () { frame.src = u; }, 350); // debounce ตอนลากสี
+      reloadTimer = setTimeout(function () { frame.src = previewUrl(); }, 350); // debounce ตอนลากสี
     }
 
     var form = el('div', { class: 'wc-form' });

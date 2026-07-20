@@ -91,6 +91,13 @@
   s.setProperty('--accent-weak', 'rgba(' + r + ',' + g + ',' + b + ',0.22)');
   s.setProperty('--accent-ring', 'rgba(' + r + ',' + g + ',' + b + ',0.7)');
 })();
+/* ?scale=50-250 — ย่อ/ขยายทั้ง widget (%) */
+(function () {
+  var sc = Number(new URLSearchParams(location.search).get('scale'));
+  if (isFinite(sc) && sc >= 50 && sc <= 250 && sc !== 100) {
+    document.addEventListener('DOMContentLoaded', function () { document.body.style.zoom = sc / 100; });
+  }
+})();
 </script>
 </head>
 <body>
@@ -111,6 +118,10 @@
     var size = parseInt(params.get('size'), 10);
     var timeEl = document.getElementById('time');
     var labelEl = document.getElementById('label');
+    // ?label=ข้อความ ล็อกหัวข้อจาก URL (snapshot ไม่ทับ); ?label=0 ซ่อนหัวข้อ
+    var labelParam = params.get('label');
+    if (labelParam === '0') labelEl.style.display = 'none';
+    else if (labelParam) labelEl.textContent = labelParam;
     var boxEl = document.getElementById('box');
     if (size > 0) timeEl.style.fontSize = size + 'px';
 
@@ -151,7 +162,7 @@
       state.running = !!t.running;
       state.enabled = t.enabled !== false;
       state.baseAt = Date.now();
-      if (t.label) labelEl.textContent = esc(t.label);
+      if (t.label && labelParam == null) labelEl.textContent = esc(t.label);
       // ซ่อนทั้งกล่องถ้า timer ปิดใช้งาน
       boxEl.style.display = state.enabled ? '' : 'none';
 

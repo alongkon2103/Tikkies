@@ -214,6 +214,15 @@
   }
   #wsdot.on { background: #2dd4a8; box-shadow: 0 0 8px rgba(45, 212, 168, 0.8); }
 </style>
+<script>
+/* ?scale=50-250 — ย่อ/ขยายทั้ง widget (%) */
+(function () {
+  var sc = Number(new URLSearchParams(location.search).get('scale'));
+  if (isFinite(sc) && sc >= 50 && sc <= 250 && sc !== 100) {
+    document.addEventListener('DOMContentLoaded', function () { document.body.style.zoom = sc / 100; });
+  }
+})();
+</script>
 </head>
 <body>
   <div id="stage"></div>
