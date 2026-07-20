@@ -550,27 +550,26 @@ textarea { resize: vertical; }
 /* iframe ข้าม origin (OOPIF) + backdrop-filter บน host = Chromium composite เพี้ยน
    ทำให้ modal ดูโปร่งทะลุเห็นข้างหลัง — คลาส .has-iframe (เซ็ตจาก JS) ปิด blur + บังคับพื้นทึบ
    (ไม่ใช้ :has() เพราะ Chromium ของ Electron รุ่นนี้ยังไม่แมตช์) */
-/* ฉากหลังทึบ 100% (ไม่ใช่ 0.82) + ปิด blur = ต่อให้ compositing ของ iframe เพี้ยน
-   ก็ไม่มีเนื้อหาหน้าหลังทะลุขึ้นมาให้เห็น */
-#modalHost.has-iframe {
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-  background: #060d16;
-}
-:root[data-theme="light"] #modalHost.has-iframe { background: #0f172a; }
-#modalHost.has-iframe .modal { width: 880px; background: var(--card); isolation: isolate; }
+/* หน้าแต่งธีมมี iframe cross-origin (OOPIF) — backdrop-filter blur ทำ Chromium
+   composite เพี้ยนจนเห็นทะลุ จึงปิด blur เฉพาะหน้านี้ (ฉากหลังยังหรี่โปร่งปกติ ไม่ทึบสนิท) */
+#modalHost.has-iframe { backdrop-filter: none; -webkit-backdrop-filter: none; }
+#modalHost.has-iframe .modal { width: 880px; }
 .wc-cols { display: grid; grid-template-columns: 230px 1fr; gap: 16px; margin-bottom: 12px; align-items: stretch; }
 .wc-form { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .wc-form .field { margin-bottom: 6px; }
 .wc-preview-wrap { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-/* กรอบ preview ยืดสูงเท่าคอลัมน์ฟอร์ม (min 300) — ฟอร์มยาวแค่ไหน preview ก็สูงตาม ไม่ล้น */
-.wc-preview {
-  width: 100%; flex: 1 1 auto; min-height: 300px;
-  border: 1px dashed var(--line-strong); border-radius: 9px;
+/* กล่องครอบ iframe: overflow:hidden + own layer บังคับตัด iframe ไม่ให้วาดล้นทับฟอร์ม
+   (OOPIF จะถูก clip ตามกล่องนี้) — ยืดสูงเท่าคอลัมน์ฟอร์ม */
+.wc-preview-box {
+  position: relative; flex: 1 1 auto; min-height: 300px;
+  overflow: hidden; border-radius: 9px; transform: translateZ(0);
+  border: 1px dashed var(--line-strong);
   background:
     linear-gradient(45deg, rgba(127,127,127,0.13) 25%, transparent 25%, transparent 75%, rgba(127,127,127,0.13) 75%),
     linear-gradient(45deg, rgba(127,127,127,0.13) 25%, transparent 25%, transparent 75%, rgba(127,127,127,0.13) 75%);
   background-size: 18px 18px; background-position: 0 0, 9px 9px; /* ลายหมากรุก = โปร่งใส */
 }
+.wc-preview { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
 .wc-preview-wrap .hint { text-align: center; }
 
 /* ===== ประวัติไลฟ์ ===== */

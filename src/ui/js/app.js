@@ -756,7 +756,7 @@
       el('div', { class: 'wc-cols' }, [
         form,
         el('div', { class: 'wc-preview-wrap' }, [
-          frame,
+          el('div', { class: 'wc-preview-box' }, [frame]), // กล่อง overflow:hidden บังคับตัด iframe ไม่ให้ล้น
           el('div', { class: 'hint', text: 'ตัวอย่างสด — ขนาดแนะนำใน OBS: ' + w.size })
         ])
       ]),
