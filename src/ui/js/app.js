@@ -943,7 +943,16 @@
 
   // ---------- Sound playback ----------
   // TTS เล่นที่ main process ด้วย macOS say (ttsPlayer) — renderer ไม่ต้องทำ
+  // /media/... = ไฟล์ในคลัง เสิร์ฟผ่าน overlay server — Dashboard (file://) ต้องต่อ origin เต็ม
+  function resolveMediaUrl(url) {
+    if (!url) return url;
+    if (/^(https?:|file:|data:)/i.test(url)) return url;
+    if (url.charAt(0) === '/') return 'http://localhost:' + (S.serverPort || 21213) + url;
+    return url;
+  }
+
   function playSound(url, volume) {
+    url = resolveMediaUrl(url);
     if (!url) return;
     try {
       var a = new Audio(url);

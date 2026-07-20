@@ -447,10 +447,12 @@ window.ActionsEditor = (function () {
     var inp = el('input', { type: 'text', value: obj[key] || '', placeholder: 'วาง URL หรือกดเลือกไฟล์' });
     inp.addEventListener('input', function () { obj[key] = inp.value; });
     var btn = el('button', { class: 'btn btn-ghost btn-sm', text: 'เลือกไฟล์', type: 'button', onclick: async function () {
-      var p = await invoke('app:pickFile', { filters: filters });
-      if (p) { obj[key] = toFileUrl(p); inp.value = obj[key]; }
+      // คัดลอกไฟล์เข้าคลัง /media แล้วเสิร์ฟผ่าน http → เล่นได้ทั้ง Dashboard และ OBS widget
+      // (file:// เล่นใน OBS ไม่ได้ + บน Windows ประกอบ URL พังง่าย)
+      var url = await invoke('media:import', { filters: filters });
+      if (url) { obj[key] = url; inp.value = url; }
     } });
-    return field(label, el('div', { class: 'url-row' }, [inp, btn]));
+    return field(label, el('div', { class: 'url-row' }, [inp, btn]), 'ไฟล์จะถูกคัดลอกเข้าโปรแกรม เล่นได้ทั้งในแอปและ OBS');
   }
 
   // app:pickFile คืน file:// URL ที่ถูกต้องมาแล้ว (ผ่านตรงนี้ไปเลย);
