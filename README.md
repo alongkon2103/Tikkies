@@ -5,7 +5,7 @@ Interactive toolkit for TikTok LIVE — turn gifts, chat and likes into actions 
 
 ## ดาวน์โหลด · Download
 
-**[Tikkies Tools v0.9.23 สำหรับ Windows](https://github.com/alongkon2103/Tikkies/releases/latest)**
+**[Tikkies Tools v0.9.24 สำหรับ Windows](https://github.com/alongkon2103/Tikkies/releases/latest)**
 
 ติดตั้งครั้งเดียว โปรแกรมอัปเดตตัวเองอัตโนมัติ · Install once — the app updates itself.
 
